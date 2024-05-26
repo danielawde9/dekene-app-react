@@ -1,4 +1,3 @@
-// src/components/Sales.js
 import React from 'react';
 import { Card, Table, Button, InputNumber, Form, Popconfirm } from 'antd';
 import { formatNumber } from '../utils/formatNumber';
@@ -27,13 +26,13 @@ const columns = (handleDelete) => [
     },
 ];
 
-function Sales({ addSale }) {
+function Sales({ addSale, selectedUser }) {
     const [form] = Form.useForm();
     const [sales, setSales] = React.useState([]);
 
     const onFinish = (values) => {
         const key = sales.length ? sales[sales.length - 1].key + 1 : 0;
-        const newSale = { ...values, key };
+        const newSale = { ...values, key, user_id: selectedUser };
         setSales([...sales, newSale]);
         addSale(newSale);
         form.resetFields();

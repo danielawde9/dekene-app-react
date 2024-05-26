@@ -1,4 +1,3 @@
-// src/components/Credits.js
 import React from 'react';
 import { Card, Table, Button, Input, InputNumber, Form, Popconfirm } from 'antd';
 import { formatNumber } from '../utils/formatNumber';
@@ -32,13 +31,13 @@ const columns = (handleDelete) => [
     },
 ];
 
-function Credits({ addCredit }) {
+function Credits({ addCredit, selectedUser }) {
     const [form] = Form.useForm();
     const [credits, setCredits] = React.useState([]);
 
     const onFinish = (values) => {
         const key = credits.length ? credits[credits.length - 1].key + 1 : 0;
-        const newCredit = { ...values, key };
+        const newCredit = { ...values, key, user_id: selectedUser };
         setCredits([...credits, newCredit]);
         addCredit(newCredit);
         form.resetFields();

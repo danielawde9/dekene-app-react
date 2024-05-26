@@ -11,14 +11,15 @@ import {
   Modal,
 } from "antd";
 import { createClient } from "@supabase/supabase-js";
-import DailyBalance from "./components/DailyBalance";
-import Credits from "./components/Credits";
-import Payments from "./components/Payments";
-import Sales from "./components/Sales";
-import Withdrawals from "./components/Withdrawals";
+import DailyBalance from "./DailyBalance";
+import Credits from "./Credits";
+import Payments from "./Payments";
+import Sales from "./Sales";
+import Withdrawals from "./Withdrawals";
+import TransactionTable from "./TransactionTable";
+import LineChartComponent from "./LineChartComponent";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { formatNumber } from "./utils/formatNumber";
 
 const { Header, Content, Footer } = Layout;
 const { Option } = Select;
@@ -27,7 +28,7 @@ const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey = process.env.REACT_APP_SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-function MainScreen() {
+const MainScreen = ({ user }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [openingBalances, setOpeningBalances] = useState({ usd: 0, lbp: 0 });
   const [credits, setCredits] = useState([]);
@@ -54,9 +55,8 @@ function MainScreen() {
         toast.error("Error fetching opening balances: " + error.message);
       } else {
         const lastDayBalance = data[0];
-        console.log(lastDayBalance, "ll");
         setOpeningBalances({
-          date: lastDayBalance ? lastDayBalance.date : 0,
+          date: lastDayBalance ? lastDayBalance.date : "no date found",
           usd: lastDayBalance ? lastDayBalance.closing_usd : 0,
           lbp: lastDayBalance ? lastDayBalance.closing_lbp : 0,
         });
@@ -158,29 +158,70 @@ function MainScreen() {
     const { usd: closing_usd, lbp: closing_lbp } = totals.afterWithdrawals;
     const date = currentDate.toISOString().split("T")[0];
 
-    const { data, error } = await supabase.from("dailybalances").insert([
-      {
-        date,
-        opening_usd: openingBalances.usd,
-        opening_lbp: openingBalances.lbp,
-        closing_usd,
-        closing_lbp,
-        user_id: selectedUser, // Use the selected user ID
-      },
-    ]);
+    try {
+      const { data: balanceData, error: balanceError } = await supabase
+        .from("dailybalances")
+        .insert([
+          {
+            date,
+            opening_usd: openingBalances.usd,
+            opening_lbp: openingBalances.lbp,
+            closing_usd,
+            closing_lbp,
+            user_id: selectedUser,
+          },
+        ]);
 
-    if (error) {
-      toast.error("Error submitting daily balance: " + error.message);
-    } else {
-      toast.success("Daily balance submitted successfully!");
+      if (balanceError) throw balanceError;
+
+      // Insert credits
+      for (const credit of credits) {
+        console.log(credit, "credit");
+        const { error: creditError } = await supabase
+          .from("credits")
+          .insert([{ ...credit, date, user_id: selectedUser }]);
+        if (creditError) throw creditError;
+      }
+
+      // Insert payments
+      for (const payment of payments) {
+        console.log(payment, "payment");
+        const { error: paymentError } = await supabase
+          .from("payments")
+          .insert([{ ...payment, date, user_id: selectedUser }]);
+        if (paymentError) throw paymentError;
+      }
+
+      // Insert sales
+      for (const sale of sales) {
+        console.log({ ...sale }, "sale");
+
+        const { error: saleError } = await supabase
+          .from("sales")
+          .insert([{ ...sale, date, user_id: selectedUser }]);
+        if (saleError) throw saleError;
+      }
+
+      // Insert withdrawals
+      for (const withdrawal of withdrawals) {
+        console.log(withdrawal, "withdraw");
+        const { error: withdrawalError } = await supabase
+          .from("withdrawals")
+          .insert([{ ...withdrawal, date, user_id: selectedUser }]);
+        if (withdrawalError) throw withdrawalError;
+      }
+
+      toast.success("Daily balance and transactions submitted successfully!");
       // Clear all the state after submission
       setCredits([]);
       setPayments([]);
       setSales([]);
       setWithdrawals([]);
       setOpeningBalances({ usd: closing_usd, lbp: closing_lbp });
+      setIsModalVisible(false);
+    } catch (error) {
+      toast.error("Error submitting transactions: " + error.message);
     }
-    setIsModalVisible(false);
   };
 
   return (
@@ -191,7 +232,10 @@ function MainScreen() {
           <h1>Financial Tracking App</h1>
           <Row gutter={16}>
             <Col span={24}>
-              <DailyBalance openingBalances={openingBalances} />
+              <DailyBalance
+                date={currentDate}
+                openingBalances={openingBalances}
+              />
             </Col>
           </Row>
           <Row gutter={16} style={{ marginTop: "20px" }}>
@@ -212,15 +256,15 @@ function MainScreen() {
           </Row>
           <Row gutter={16} style={{ marginTop: "20px" }}>
             <Col span={12}>
-              <Card title="Totals Before Daniel (Withdrawals)">
-                <p>USD: {formatNumber(totals.beforeWithdrawals.usd)}</p>
-                <p>LBP: {formatNumber(totals.beforeWithdrawals.lbp)}</p>
+              <Card title="Totals Before Withdrawals">
+                <p>USD: {totals.beforeWithdrawals.usd.toLocaleString()}</p>
+                <p>LBP: {totals.beforeWithdrawals.lbp.toLocaleString()}</p>
               </Card>
             </Col>
             <Col span={12}>
-              <Card title="Totals After Daniel (Withdrawals)">
-                <p>USD: {formatNumber(totals.afterWithdrawals.usd)}</p>
-                <p>LBP: {formatNumber(totals.afterWithdrawals.lbp)}</p>
+              <Card title="Totals After Withdrawals">
+                <p>USD: {totals.afterWithdrawals.usd.toLocaleString()}</p>
+                <p>LBP: {totals.afterWithdrawals.lbp.toLocaleString()}</p>
               </Card>
             </Col>
           </Row>
@@ -266,11 +310,18 @@ function MainScreen() {
             <p>Sales: {sales.length}</p>
             <p>Withdrawals: {withdrawals.length}</p>
           </Modal>
+          {user.role === "admin" && (
+            <div style={{ marginTop: "40px" }}>
+              <h2>Admin Dashboard</h2>
+              <TransactionTable />
+              <LineChartComponent />
+            </div>
+          )}
         </div>
       </Content>
       <Footer style={{ textAlign: "center" }}>Dekene Web App ©2024</Footer>
     </Layout>
   );
-}
+};
 
 export default MainScreen;

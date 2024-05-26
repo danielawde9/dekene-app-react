@@ -7,8 +7,8 @@ function DailyBalance({ openingBalances }) {
     return (
         <Card title="Opening Balance">
             <p>Date: {openingBalances.date}</p>
-            <p>Opening USD: {formatNumber(openingBalances.usd)}</p>
-            <p>Opening LBP: {formatNumber(openingBalances.lbp)}</p>
+            <p>Closing USD: {formatNumber(openingBalances.usd)}</p>
+            <p>Closing LBP: {formatNumber(openingBalances.lbp)}</p>
         </Card>
     );
 }

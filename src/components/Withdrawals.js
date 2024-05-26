@@ -1,4 +1,3 @@
-// src/components/Withdrawals.js
 import React from "react";
 import { Card, Table, Button, InputNumber, Form, Popconfirm } from "antd";
 import { formatNumber } from "../utils/formatNumber";
@@ -30,7 +29,7 @@ const columns = (handleDelete) => [
   },
 ];
 
-function Withdrawals({ addWithdrawal }) {
+function Withdrawals({ addWithdrawal, selectedUser }) {
   const [form] = Form.useForm();
   const [withdrawals, setWithdrawals] = React.useState([]);
 
@@ -38,7 +37,7 @@ function Withdrawals({ addWithdrawal }) {
     const key = withdrawals.length
       ? withdrawals[withdrawals.length - 1].key + 1
       : 0;
-    const newWithdrawal = { ...values, key };
+    const newWithdrawal = { ...values, key, user_id: selectedUser };
     setWithdrawals([...withdrawals, newWithdrawal]);
     addWithdrawal(newWithdrawal);
     form.resetFields();
@@ -50,7 +49,7 @@ function Withdrawals({ addWithdrawal }) {
   };
 
   return (
-    <Card title="Daniel (Withdrawals)">
+    <Card title="Withdrawals">
       <Form form={form} onFinish={onFinish}>
         <Form.Item
           name="amount_usd"

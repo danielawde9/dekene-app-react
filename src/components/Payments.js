@@ -1,4 +1,3 @@
-// src/components/Payments.js
 import React from 'react';
 import { Card, Table, Button, Input, InputNumber, Form, Popconfirm } from 'antd';
 import { formatNumber } from '../utils/formatNumber';
@@ -37,13 +36,13 @@ const columns = (handleDelete) => [
     },
 ];
 
-function Payments({ addPayment }) {
+function Payments({ addPayment, selectedUser }) {
     const [form] = Form.useForm();
     const [payments, setPayments] = React.useState([]);
 
     const onFinish = (values) => {
         const key = payments.length ? payments[payments.length - 1].key + 1 : 0;
-        const newPayment = { ...values, key };
+        const newPayment = { ...values, key, user_id: selectedUser };
         setPayments([...payments, newPayment]);
         addPayment(newPayment);
         form.resetFields();

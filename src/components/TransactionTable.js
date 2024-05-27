@@ -1,28 +1,23 @@
 import React, { useEffect, useState } from "react";
-import { Table } from "antd";
+import { Table, Button, Modal, Form, Input, InputNumber, Select } from "antd";
 import { createClient } from "@supabase/supabase-js";
 import { formatNumber } from "../utils/formatNumber";
+import { ToastContainer, toast } from "react-toastify";
+
+const { Option } = Select;
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey = process.env.REACT_APP_SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const TransactionTable = () => {
+const TransactionTable = ({ selectedUser, openingBalance }) => {
   const [transactions, setTransactions] = useState([]);
-  const [openingBalance, setOpeningBalance] = useState({ usd: 0, lbp: 0 });
+  const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
+  const [isWithdrawalModalVisible, setIsWithdrawalModalVisible] = useState(false);
+  const [form] = Form.useForm();
 
   useEffect(() => {
     async function fetchTransactions() {
-      const { data: dailyBalances, error: dailyBalanceError } = await supabase
-        .from("dailybalances")
-        .select("*")
-        .order("date", { ascending: true });
-
-      if (dailyBalanceError) {
-        console.error("Error fetching daily balances:", dailyBalanceError);
-        return;
-      }
-
       const { data: payments, error: paymentError } = await supabase
         .from("payments")
         .select("*");
@@ -43,12 +38,7 @@ const TransactionTable = () => {
         ...withdrawals.map((item) => ({ ...item, type: "Withdrawal" })),
       ];
 
-      transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-      setOpeningBalance({
-        usd: dailyBalances[0].opening_usd,
-        lbp: dailyBalances[0].opening_lbp,
-      });
+      transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
       setTransactions(transactions);
     }
@@ -77,6 +67,35 @@ const TransactionTable = () => {
         balance_lbp: balanceLBP,
       };
     });
+  };
+
+  const addTransaction = async (values, type) => {
+    try {
+      const date = new Date().toISOString().split("T")[0];
+      const transaction = {
+        ...values,
+        date,
+        type,
+        user_id: selectedUser,
+      };
+
+      const { error } = await supabase
+        .from(type.toLowerCase() + "s")
+        .insert([transaction]);
+
+      if (error) {
+        toast.error("Error adding transaction: " + error.message);
+      } else {
+        setTransactions([transaction, ...transactions]);
+        toast.success("Transaction added successfully!");
+      }
+
+      form.resetFields();
+      setIsPaymentModalVisible(false);
+      setIsWithdrawalModalVisible(false);
+    } catch (error) {
+      toast.error("Error adding transaction: " + error.message);
+    }
   };
 
   const columns = [
@@ -118,7 +137,134 @@ const TransactionTable = () => {
 
   const dataSource = calculateBalance(transactions);
 
-  return <Table dataSource={dataSource} columns={columns} rowKey="id" />;
+  return (
+    <>
+      <ToastContainer />
+      <Button
+        type="primary"
+        onClick={() => setIsPaymentModalVisible(true)}
+        style={{ marginRight: 16 }}
+      >
+        Add Payment
+      </Button>
+      <Button type="primary" onClick={() => setIsWithdrawalModalVisible(true)}>
+        Add Withdrawal
+      </Button>
+
+      <Table dataSource={dataSource} columns={columns} rowKey="id" />
+
+      <Modal
+        title="Add Payment"
+        visible={isPaymentModalVisible}
+        onCancel={() => setIsPaymentModalVisible(false)}
+        footer={null}
+      >
+        <Form
+          form={form}
+          onFinish={(values) => addTransaction(values, "Payment")}
+        >
+          <Form.Item
+            name="amount_usd"
+            label="Amount USD"
+            rules={[{ required: true, message: "Please input amount in USD!" }]}
+          >
+            <InputNumber
+              formatter={(value) => formatNumber(value)}
+              parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+              style={{ width: "100%" }}
+            />
+          </Form.Item>
+          <Form.Item
+            name="amount_lbp"
+            label="Amount LBP"
+            rules={[{ required: true, message: "Please input amount in LBP!" }]}
+          >
+            <InputNumber
+              formatter={(value) => formatNumber(value)}
+              parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+              style={{ width: "100%" }}
+            />
+          </Form.Item>
+          <Form.Item
+            name="reference_number"
+            label="Reference Number"
+            rules={[
+              { required: true, message: "Please input the reference number!" },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="cause"
+            label="Cause"
+            rules={[{ required: true, message: "Please input the cause!" }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="deduction_source"
+            label="Deduction Source"
+            rules={[
+              {
+                required: true,
+                message: "Please select the deduction source!",
+              },
+            ]}
+          >
+            <Select placeholder="Select deduction source">
+              <Option value="current">Current Closing</Option>
+              <Option value="withdrawals">Withdrawals</Option>
+            </Select>
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit">
+              Add Payment
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Add Withdrawal"
+        visible={isWithdrawalModalVisible}
+        onCancel={() => setIsWithdrawalModalVisible(false)}
+        footer={null}
+      >
+        <Form
+          form={form}
+          onFinish={(values) => addTransaction(values, "Withdrawal")}
+        >
+          <Form.Item
+            name="amount_usd"
+            label="Amount USD"
+            rules={[{ required: true, message: "Please input amount in USD!" }]}
+          >
+            <InputNumber
+              formatter={(value) => formatNumber(value)}
+              parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+              style={{ width: "100%" }}
+            />
+          </Form.Item>
+          <Form.Item
+            name="amount_lbp"
+            label="Amount LBP"
+            rules={[{ required: true, message: "Please input amount in LBP!" }]}
+          >
+            <InputNumber
+              formatter={(value) => formatNumber(value)}
+              parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+              style={{ width: "100%" }}
+            />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit">
+              Add Withdrawal
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </>
+  );
 };
 
 export default TransactionTable;

@@ -1,6 +1,8 @@
 import React from 'react';
-import { Card, Table, Button, Input, InputNumber, Form, Popconfirm } from 'antd';
+import { Card, Table, Button, Input, InputNumber, Form, Popconfirm, Select } from 'antd';
 import { formatNumber } from '../utils/formatNumber';
+
+const { Option } = Select;
 
 const columns = (handleDelete) => [
     {
@@ -24,6 +26,11 @@ const columns = (handleDelete) => [
         title: 'Cause',
         dataIndex: 'cause',
         key: 'cause',
+    },
+    {
+        title: 'Deduction Source',
+        dataIndex: 'deduction_source',
+        key: 'deduction_source',
     },
     {
         title: 'Action',
@@ -75,6 +82,12 @@ function Payments({ addPayment, selectedUser }) {
                 </Form.Item>
                 <Form.Item name="cause" label="Cause" rules={[{ required: true, message: 'Please input the cause!' }]}>
                     <Input />
+                </Form.Item>
+                <Form.Item name="deduction_source" label="Deduction Source" rules={[{ required: true, message: 'Please select the deduction source!' }]}>
+                    <Select placeholder="Select deduction source">
+                        <Option value="current">Current Closing</Option>
+                        <Option value="withdrawals">Withdrawals</Option>
+                    </Select>
                 </Form.Item>
                 <Form.Item>
                     <Button type="primary" htmlType="submit">

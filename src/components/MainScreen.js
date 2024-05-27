@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import {
   Layout,
-  Menu,
   Row,
   Col,
   Card,
   Button,
   Select,
   Form,
+  InputNumber,
   Modal,
 } from "antd";
 import { createClient } from "@supabase/supabase-js";
@@ -20,6 +20,7 @@ import TransactionTable from "./TransactionTable";
 import LineChartComponent from "./LineChartComponent";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { formatNumber } from "../utils/formatNumber";
 
 const { Header, Content, Footer } = Layout;
 const { Option } = Select;
@@ -42,6 +43,7 @@ const MainScreen = ({ user }) => {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState(90000);
 
   useEffect(() => {
     async function fetchOpeningBalances() {
@@ -188,6 +190,18 @@ const MainScreen = ({ user }) => {
           .from("payments")
           .insert([{ ...payment, date, user_id: selectedUser }]);
         if (paymentError) throw paymentError;
+
+        // Update withdrawal if necessary
+        if (payment.deduction_source === "withdrawals") {
+          const { error: withdrawalUpdateError } = await supabase
+            .from("withdrawals")
+            .update({
+              amount_usd: payment.amount_usd,
+              amount_lbp: payment.amount_lbp,
+            })
+            .eq("date", date);
+          if (withdrawalUpdateError) throw withdrawalUpdateError;
+        }
       }
 
       // Insert sales
@@ -219,97 +233,8 @@ const MainScreen = ({ user }) => {
     }
   };
 
-  const generateMockData = async () => {
-    const today = new Date();
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(today.getDate() - 30);
-
-    let currentDate = new Date(thirtyDaysAgo);
-
-    while (currentDate <= today) {
-      const dateString = currentDate.toISOString().split("T")[0];
-      const opening_usd = 1000 + Math.random() * 200 - 100; // Random fluctuation
-      const opening_lbp = 1500000 + Math.random() * 300000 - 150000; // Random fluctuation
-
-      const { data: balanceData, error: balanceError } = await supabase
-        .from("dailybalances")
-        .insert([
-          {
-            date: dateString,
-            opening_usd,
-            opening_lbp,
-            closing_usd: opening_usd,
-            closing_lbp: opening_lbp,
-            user_id: 1, // Assuming user ID 1 is valid
-          },
-        ]);
-
-      if (balanceError) {
-        toast.error("Error inserting daily balance: " + balanceError.message);
-        return;
-      }
-
-      // Insert random credits
-      for (let i = 0; i < 3; i++) {
-        const { error: creditError } = await supabase.from("credits").insert([
-          {
-            date: dateString,
-            amount_usd: Math.random() * 50,
-            amount_lbp: Math.random() * 75000,
-            person: `Person ${i + 1}`,
-            user_id: 1,
-          },
-        ]);
-        if (creditError) throw creditError;
-      }
-
-      // Insert random payments
-      for (let i = 0; i < 3; i++) {
-        const { error: paymentError } = await supabase.from("payments").insert([
-          {
-            date: dateString,
-            amount_usd: Math.random() * 100,
-            amount_lbp: Math.random() * 150000,
-            reference_number: `REF-${i + 1}`,
-            cause: `Payment cause ${i + 1}`,
-            user_id: 1,
-          },
-        ]);
-        if (paymentError) throw paymentError;
-      }
-
-      // Insert random sales
-      for (let i = 0; i < 3; i++) {
-        const { error: saleError } = await supabase.from("sales").insert([
-          {
-            date: dateString,
-            amount_usd: Math.random() * 200,
-            amount_lbp: Math.random() * 300000,
-            user_id: 1,
-          },
-        ]);
-        if (saleError) throw saleError;
-      }
-
-      // Insert random withdrawals
-      for (let i = 0; i < 3; i++) {
-        const { error: withdrawalError } = await supabase
-          .from("withdrawals")
-          .insert([
-            {
-              date: dateString,
-              amount_usd: Math.random() * 100,
-              amount_lbp: Math.random() * 150000,
-              user_id: 1,
-            },
-          ]);
-        if (withdrawalError) throw withdrawalError;
-      }
-
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    toast.success("Mock data generated successfully!");
+  const calculateTotalInUSD = (usd, lbp) => {
+    return usd + lbp / exchangeRate;
   };
 
   return (
@@ -329,18 +254,21 @@ const MainScreen = ({ user }) => {
           </Row>
           <Row gutter={16} style={{ marginTop: "20px" }}>
             <Col span={12}>
-              <Credits addCredit={addCredit} />
+              <Credits addCredit={addCredit} selectedUser={selectedUser} />
             </Col>
             <Col span={12}>
-              <Payments addPayment={addPayment} />
+              <Payments addPayment={addPayment} selectedUser={selectedUser} />
             </Col>
           </Row>
           <Row gutter={16} style={{ marginTop: "20px" }}>
             <Col span={12}>
-              <Sales addSale={addSale} />
+              <Sales addSale={addSale} selectedUser={selectedUser} />
             </Col>
             <Col span={12}>
-              <Withdrawals addWithdrawal={addWithdrawal} />
+              <Withdrawals
+                addWithdrawal={addWithdrawal}
+                selectedUser={selectedUser}
+              />
             </Col>
           </Row>
           <Row gutter={16} style={{ marginTop: "20px" }}>
@@ -348,12 +276,35 @@ const MainScreen = ({ user }) => {
               <Card title="Totals Before Withdrawals">
                 <p>USD: {totals.beforeWithdrawals.usd.toLocaleString()}</p>
                 <p>LBP: {totals.beforeWithdrawals.lbp.toLocaleString()}</p>
+                <Form.Item label="Exchange Rate" style={{ marginTop: "10px" }}>
+                  <InputNumber
+                    prefix="LBP"
+                    formatter={(value) => formatNumber(value)}
+                    defaultValue={formatNumber(exchangeRate)}
+                    onChange={(value) => setExchangeRate(value)}
+                    style={{ width: "100%" }}
+                  />
+                </Form.Item>
+                <p>
+                  Total in USD:{" "}
+                  {calculateTotalInUSD(
+                    totals.beforeWithdrawals.usd,
+                    totals.beforeWithdrawals.lbp
+                  ).toLocaleString()}
+                </p>
               </Card>
             </Col>
             <Col span={12}>
               <Card title="Totals After Withdrawals">
                 <p>USD: {totals.afterWithdrawals.usd.toLocaleString()}</p>
                 <p>LBP: {totals.afterWithdrawals.lbp.toLocaleString()}</p>
+                <p>
+                  Total in USD:{" "}
+                  {calculateTotalInUSD(
+                    totals.afterWithdrawals.usd,
+                    totals.afterWithdrawals.lbp
+                  ).toLocaleString()}
+                </p>
               </Card>
             </Col>
           </Row>
@@ -402,7 +353,10 @@ const MainScreen = ({ user }) => {
           {user.role === "admin" && (
             <div style={{ marginTop: "40px" }}>
               <h2>Admin Dashboard</h2>
-              <TransactionTable />
+              <TransactionTable
+                selectedUser={selectedUser}
+                openingBalance={openingBalances}
+              />
               <LineChartComponent />
             </div>
           )}

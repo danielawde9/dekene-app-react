@@ -110,28 +110,55 @@ const TransactionTable = ({ selectedUser, openingBalance }) => {
       key: "type",
     },
     {
-      title: "Amount USD",
-      dataIndex: "amount_usd",
-      key: "amount_usd",
-      render: (text) => formatNumber(text),
+      title: "Withdrawal",
+      children: [
+        {
+          title: "USD",
+          dataIndex: "withdrawal_usd",
+          key: "withdrawal_usd",
+          render: (text, record) => record.type === "Withdrawal" ? formatNumber(record.amount_usd) : null,
+        },
+        {
+          title: "LBP",
+          dataIndex: "withdrawal_lbp",
+          key: "withdrawal_lbp",
+          render: (text, record) => record.type === "Withdrawal" ? formatNumber(record.amount_lbp) : null,
+        },
+      ],
     },
     {
-      title: "Amount LBP",
-      dataIndex: "amount_lbp",
-      key: "amount_lbp",
-      render: (text) => formatNumber(text),
+      title: "Payment",
+      children: [
+        {
+          title: "USD",
+          dataIndex: "payment_usd",
+          key: "payment_usd",
+          render: (text, record) => record.type === "Payment" ? formatNumber(record.amount_usd) : null,
+        },
+        {
+          title: "LBP",
+          dataIndex: "payment_lbp",
+          key: "payment_lbp",
+          render: (text, record) => record.type === "Payment" ? formatNumber(record.amount_lbp) : null,
+        },
+      ],
     },
     {
-      title: "Balance USD",
-      dataIndex: "balance_usd",
-      key: "balance_usd",
-      render: (text) => formatNumber(text),
-    },
-    {
-      title: "Balance LBP",
-      dataIndex: "balance_lbp",
-      key: "balance_lbp",
-      render: (text) => formatNumber(text),
+      title: "Balance",
+      children: [
+        {
+          title: "USD",
+          dataIndex: "balance_usd",
+          key: "balance_usd",
+          render: (text) => formatNumber(text),
+        },
+        {
+          title: "LBP",
+          dataIndex: "balance_lbp",
+          key: "balance_lbp",
+          render: (text) => formatNumber(text),
+        },
+      ],
     },
   ];
 
@@ -151,11 +178,11 @@ const TransactionTable = ({ selectedUser, openingBalance }) => {
         Add Withdrawal
       </Button>
 
-      <Table dataSource={dataSource} columns={columns} rowKey="id" />
+      <Table scroll={{ x: true }} dataSource={dataSource} columns={columns} rowKey="id" />
 
       <Modal
         title="Add Payment"
-        visible={isPaymentModalVisible}
+        open={isPaymentModalVisible}
         onCancel={() => setIsPaymentModalVisible(false)}
         footer={null}
       >
@@ -226,7 +253,7 @@ const TransactionTable = ({ selectedUser, openingBalance }) => {
 
       <Modal
         title="Add Withdrawal"
-        visible={isWithdrawalModalVisible}
+        open={isWithdrawalModalVisible}
         onCancel={() => setIsWithdrawalModalVisible(false)}
         footer={null}
       >

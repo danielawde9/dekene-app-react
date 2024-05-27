@@ -95,7 +95,7 @@ function Payments({ addPayment, selectedUser }) {
                     </Button>
                 </Form.Item>
             </Form>
-            <Table dataSource={payments} columns={columns(handleDelete)} rowKey="key" />
+            <Table dataSource={payments} columns={columns(handleDelete)} rowKey="key" scroll={{x: true} }/>
         </Card>
     );
 }

@@ -9,6 +9,8 @@ import {
   Form,
   InputNumber,
   Modal,
+  Switch,
+  DatePicker,
   Tabs,
 } from "antd";
 import { createClient } from "@supabase/supabase-js";
@@ -23,7 +25,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { formatNumber } from "../utils/formatNumber";
 
-const { Header, Content, Footer } = Layout;
+const { Content, Footer } = Layout;
 const { Option } = Select;
 const { TabPane } = Tabs;
 
@@ -46,6 +48,8 @@ const MainScreen = ({ user }) => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [exchangeRate, setExchangeRate] = useState(90000);
+  const [manualDateEnabled, setManualDateEnabled] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(currentDate);
 
   useEffect(() => {
     async function fetchOpeningBalances() {
@@ -77,8 +81,22 @@ const MainScreen = ({ user }) => {
       }
     }
 
+    async function fetchSettings() {
+      const { data, error } = await supabase
+        .from("settings")
+        .select("*")
+        .limit(1);
+
+      if (error) {
+        toast.error("Error fetching settings: " + error.message);
+      } else if (data.length > 0) {
+        setManualDateEnabled(data[0].manual_date_enabled);
+      }
+    }
+
     fetchOpeningBalances();
     fetchUsers();
+    fetchSettings();
   }, []);
 
   useEffect(() => {
@@ -160,7 +178,9 @@ const MainScreen = ({ user }) => {
 
   const handleConfirmSubmit = async () => {
     const { usd: closing_usd, lbp: closing_lbp } = totals.afterWithdrawals;
-    const date = currentDate.toISOString().split("T")[0];
+    const date = manualDateEnabled
+      ? selectedDate.toISOString().split("T")[0]
+      : currentDate.toISOString().split("T")[0];
 
     try {
       const { data: balanceData, error: balanceError } = await supabase
@@ -190,7 +210,14 @@ const MainScreen = ({ user }) => {
       for (const payment of payments) {
         const { error: paymentError } = await supabase
           .from("payments")
-          .insert([{ ...payment, date, user_id: selectedUser }]);
+          .insert([
+            {
+              ...payment,
+              date,
+              user_id: selectedUser,
+              deduction_source: "withdrawals",
+            },
+          ]);
         if (paymentError) throw paymentError;
 
         // Update withdrawal if necessary
@@ -239,148 +266,59 @@ const MainScreen = ({ user }) => {
     return usd + lbp / exchangeRate;
   };
 
-  const generateMockData = async () => {
-    const today = new Date();
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(today.getDate() - 30);
-  
-    let currentDate = new Date(thirtyDaysAgo);
-    let previousClosingUSD = 1000; // Initial random openin balance in USD
-    let previousClosingLBP = 1500000 ; // Initial random opening balance in LBP
-  
-    while (currentDate <= today) {
-      const dateString = currentDate.toISOString().split("T")[0];
-      const opening_usd = previousClosingUSD;
-      const opening_lbp = previousClosingLBP;
-  
-      // Simulate random transactions for the day
-      const totalCreditsUSD = Array(3).fill(0).reduce(acc => acc + Math.random() * 50 + 50, 0);
-      const totalCreditsLBP = Array(3).fill(0).reduce(acc => acc + Math.random() * 500000 + 500000, 0);
-      const totalPaymentsUSD = Array(3).fill(0).reduce(acc => acc + Math.random() * 50 + 50, 0);
-      const totalPaymentsLBP = Array(3).fill(0).reduce(acc => acc + Math.random() * 500000 + 500000, 0);
-      const totalSalesUSD = Array(3).fill(0).reduce(acc => acc + Math.random() * 50 + 50, 0);
-      const totalSalesLBP = Array(3).fill(0).reduce(acc => acc + Math.random() * 500000 + 500000, 0);
-      const totalWithdrawalsUSD = Array(3).fill(0).reduce(acc => acc + Math.random() * 50 + 50, 0);
-      const totalWithdrawalsLBP = Array(3).fill(0).reduce(acc => acc + Math.random() * 500000 + 500000, 0);
-  
-      const closing_usd = opening_usd + totalSalesUSD - totalCreditsUSD - totalPaymentsUSD + totalWithdrawalsUSD;
-      const closing_lbp = opening_lbp + totalSalesLBP - totalCreditsLBP - totalPaymentsLBP + totalWithdrawalsLBP;
-  
-      // Insert daily balance
-      const { data: balanceData, error: balanceError } = await supabase
-        .from("dailybalances")
-        .insert([
-          {
-            date: dateString,
-            opening_usd,
-            opening_lbp,
-            closing_usd,
-            closing_lbp,
-            user_id: 1, // Assuming user ID 1 is valid
-          },
-        ]);
-  
-      if (balanceError) {
-        toast.error("Error inserting daily balance: " + balanceError.message);
-        return;
-      }
-  
-      // Insert random credits
-      for (let i = 0; i < 3; i++) {
-        const { error: creditError } = await supabase.from("credits").insert([
-          {
-            date: dateString,
-            amount_usd: Math.random() * 50 + 50, // Random value between 50 and 100
-            amount_lbp: Math.random() * 500000 + 500000, // Random value between 500,000 and 1,000,000
-            person: `Person ${i + 1}`,
-            user_id: 1,
-          },
-        ]);
-        if (creditError) throw creditError;
-      }
-  
-      // Insert random payments
-      for (let i = 0; i < 3; i++) {
-        const { error: paymentError } = await supabase.from("payments").insert([
-          {
-            date: dateString,
-            amount_usd: Math.random() * 50 + 50, // Random value between 50 and 100
-            amount_lbp: Math.random() * 500000 + 500000, // Random value between 500,000 and 1,000,000
-            reference_number: `REF-${i + 1}`,
-            cause: `Payment cause ${i + 1}`,
-            user_id: 1,
-          },
-        ]);
-        if (paymentError) throw paymentError;
-      }
-  
-      // Insert random sales
-      for (let i = 0; i < 3; i++) {
-        const { error: saleError } = await supabase.from("sales").insert([
-          {
-            date: dateString,
-            amount_usd: Math.random() * 50 + 50, // Random value between 50 and 100
-            amount_lbp: Math.random() * 500000 + 500000, // Random value between 500,000 and 1,000,000
-            user_id: 1,
-          },
-        ]);
-        if (saleError) throw saleError;
-      }
-  
-      // Insert random withdrawals
-      for (let i = 0; i < 3; i++) {
-        const { error: withdrawalError } = await supabase
-          .from("withdrawals")
-          .insert([
-            {
-              date: dateString,
-              amount_usd: Math.random() * 50 + 50, // Random value between 50 and 100
-              amount_lbp: Math.random() * 500000 + 500000, // Random value between 500,000 and 1,000,000
-              user_id: 1,
-            },
-          ]);
-        if (withdrawalError) throw withdrawalError;
-      }
-  
-      // Update previous closing balances for the next day
-      previousClosingUSD = closing_usd;
-      previousClosingLBP = closing_lbp;
-  
-      currentDate.setDate(currentDate.getDate() + 1);
+  const handleSwitchChange = async (checked) => {
+    setManualDateEnabled(checked);
+    try {
+      const { data, error } = await supabase
+        .from("settings")
+        .update({ manual_date_enabled: checked })
+        .eq("id", 1); // Assuming there is only one settings row
+      if (error) throw error;
+    } catch (error) {
+      toast.error("Error updating settings: " + error.message);
     }
-  
-    toast.success("Mock data generated successfully!");
   };
+
   return (
     <Layout className="layout">
       <ToastContainer />
-      <Content style={{ padding: "0 10px" }}>
+      <Content style={{ padding: "0 50px" }}>
         <Tabs defaultActiveKey="1">
           <TabPane tab="Main View" key="1">
             <div className="site-layout-content">
               <h1>Financial Tracking App</h1>
-              <Button onClick={generateMockData}>Generate Mock Data</Button>
-              <DailyBalance
-                date={currentDate}
-                openingBalances={openingBalances}
-              />
-              <div style={{ marginTop: "20px" }}>
-                <Credits addCredit={addCredit} selectedUser={selectedUser} />
-              </div>
-              <div style={{ marginTop: "20px" }}>
-                <Payments addPayment={addPayment} selectedUser={selectedUser} />
-              </div>
-              <div style={{ marginTop: "20px" }}>
-                <Sales addSale={addSale} selectedUser={selectedUser} />
-              </div>
-              <div style={{ marginTop: "20px" }}>
-                <Withdrawals
-                  addWithdrawal={addWithdrawal}
-                  selectedUser={selectedUser}
-                />
-              </div>
+              <Row gutter={16}>
+                <Col span={24}>
+                  <DailyBalance
+                    date={currentDate}
+                    openingBalances={openingBalances}
+                  />
+                </Col>
+              </Row>
               <Row gutter={16} style={{ marginTop: "20px" }}>
-                <Col span={24} md={12}>
+                <Col span={12}>
+                  <Credits addCredit={addCredit} selectedUser={selectedUser} />
+                </Col>
+                <Col span={12}>
+                  <Payments
+                    addPayment={addPayment}
+                    selectedUser={selectedUser}
+                  />
+                </Col>
+              </Row>
+              <Row gutter={16} style={{ marginTop: "20px" }}>
+                <Col span={12}>
+                  <Sales addSale={addSale} selectedUser={selectedUser} />
+                </Col>
+                <Col span={12}>
+                  <Withdrawals
+                    addWithdrawal={addWithdrawal}
+                    selectedUser={selectedUser}
+                  />
+                </Col>
+              </Row>
+              <Row gutter={16} style={{ marginTop: "20px" }}>
+                <Col span={12}>
                   <Card title="Totals Before Withdrawals">
                     <p>USD: {totals.beforeWithdrawals.usd.toLocaleString()}</p>
                     <p>LBP: {totals.beforeWithdrawals.lbp.toLocaleString()}</p>
@@ -405,7 +343,7 @@ const MainScreen = ({ user }) => {
                     </p>
                   </Card>
                 </Col>
-                <Col span={24} md={12}>
+                <Col span={12}>
                   <Card title="Totals After Withdrawals">
                     <p>USD: {totals.afterWithdrawals.usd.toLocaleString()}</p>
                     <p>LBP: {totals.afterWithdrawals.lbp.toLocaleString()}</p>
@@ -419,33 +357,55 @@ const MainScreen = ({ user }) => {
                   </Card>
                 </Col>
               </Row>
-              <div style={{ marginTop: "20px", textAlign: "center" }}>
-                <Form>
-                  <Form.Item
-                    name="closing_employee"
-                    label="Select Closing Employee"
-                    rules={[
-                      { required: true, message: "Please select an employee!" },
-                    ]}
-                  >
-                    <Select
-                      placeholder="Select an employee"
-                      onChange={(value) => setSelectedUser(value)}
+              <Row
+                gutter={16}
+                style={{ marginTop: "20px", textAlign: "center" }}
+              >
+                <Col span={24}>
+                  <Form>
+                    <Form.Item
+                      name="closing_employee"
+                      label="Select Closing Employee"
+                      rules={[
+                        {
+                          required: true,
+                          message: "Please select an employee!",
+                        },
+                      ]}
                     >
-                      {users.map((user) => (
-                        <Option key={user.id} value={user.id}>
-                          {user.name}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                  <Form.Item>
-                    <Button type="primary" onClick={handleSubmit}>
-                      Close Today
-                    </Button>
-                  </Form.Item>
-                </Form>
-              </div>
+                      <Select
+                        placeholder="Select an employee"
+                        onChange={(value) => setSelectedUser(value)}
+                      >
+                        {users.map((user) => (
+                          <Option key={user.id} value={user.id}>
+                            {user.name}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    {manualDateEnabled && (
+                      <Form.Item
+                        name="closing_date"
+                        label="Select Closing Date"
+                        rules={[
+                          { required: true, message: "Please select a date!" },
+                        ]}
+                      >
+                        <DatePicker
+                          format="YYYY-MM-DD"
+                          onChange={(date) => setSelectedDate(date)}
+                        />
+                      </Form.Item>
+                    )}
+                    <Form.Item>
+                      <Button type="primary" onClick={handleSubmit}>
+                        Close Today
+                      </Button>
+                    </Form.Item>
+                  </Form>
+                </Col>
+              </Row>
               <Modal
                 title="Confirm Closing"
                 open={isModalVisible}
@@ -465,6 +425,16 @@ const MainScreen = ({ user }) => {
             <TabPane tab="Admin Dashboard" key="2">
               <div style={{ marginTop: "40px" }}>
                 <h2>Admin Dashboard</h2>
+                <p>Switch to enable user to enter date manually</p>
+                <div style={{ marginTop: "20px" }}>
+                  <Switch
+                    checked={manualDateEnabled}
+                    onChange={handleSwitchChange}
+                    checkedChildren="Manual Date"
+                    unCheckedChildren="Auto Date"
+                  />
+                </div>
+                <h3>Transaction Table</h3>
                 <TransactionTable
                   selectedUser={selectedUser}
                   openingBalance={openingBalances}

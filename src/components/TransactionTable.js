@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Table, Button, Modal, Form, Input, InputNumber, Select } from "antd";
+import { Table, Button, Modal, Form, Input, InputNumber, Typography } from "antd";
 import { createClient } from "@supabase/supabase-js";
 import { formatNumber } from "../utils/formatNumber";
 import { ToastContainer, toast } from "react-toastify";
-
-const { Option } = Select;
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey = process.env.REACT_APP_SUPABASE_KEY;
@@ -13,7 +11,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const TransactionTable = ({ selectedUser, openingBalance }) => {
   const [transactions, setTransactions] = useState([]);
   const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
-  const [isWithdrawalModalVisible, setIsWithdrawalModalVisible] = useState(false);
+  const [isWithdrawalModalVisible, setIsWithdrawalModalVisible] =
+    useState(false);
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -116,13 +115,19 @@ const TransactionTable = ({ selectedUser, openingBalance }) => {
           title: "USD",
           dataIndex: "withdrawal_usd",
           key: "withdrawal_usd",
-          render: (text, record) => record.type === "Withdrawal" ? formatNumber(record.amount_usd) : null,
+          render: (text, record) =>
+            record.type === "Withdrawal"
+              ? formatNumber(record.amount_usd)
+              : null,
         },
         {
           title: "LBP",
           dataIndex: "withdrawal_lbp",
           key: "withdrawal_lbp",
-          render: (text, record) => record.type === "Withdrawal" ? formatNumber(record.amount_lbp) : null,
+          render: (text, record) =>
+            record.type === "Withdrawal"
+              ? formatNumber(record.amount_lbp)
+              : null,
         },
       ],
     },
@@ -133,13 +138,15 @@ const TransactionTable = ({ selectedUser, openingBalance }) => {
           title: "USD",
           dataIndex: "payment_usd",
           key: "payment_usd",
-          render: (text, record) => record.type === "Payment" ? formatNumber(record.amount_usd) : null,
+          render: (text, record) =>
+            record.type === "Payment" ? formatNumber(record.amount_usd) : null,
         },
         {
           title: "LBP",
           dataIndex: "payment_lbp",
           key: "payment_lbp",
-          render: (text, record) => record.type === "Payment" ? formatNumber(record.amount_lbp) : null,
+          render: (text, record) =>
+            record.type === "Payment" ? formatNumber(record.amount_lbp) : null,
         },
       ],
     },
@@ -178,7 +185,12 @@ const TransactionTable = ({ selectedUser, openingBalance }) => {
         Add Withdrawal
       </Button>
 
-      <Table scroll={{ x: true }} dataSource={dataSource} columns={columns} rowKey="id" />
+      <Table
+        scroll={{ x: true }}
+        dataSource={dataSource}
+        columns={columns}
+        rowKey="id"
+      />
 
       <Modal
         title="Add Payment"
@@ -188,7 +200,12 @@ const TransactionTable = ({ selectedUser, openingBalance }) => {
       >
         <Form
           form={form}
-          onFinish={(values) => addTransaction(values, "Payment")}
+          onFinish={(values) =>
+            addTransaction(
+              { ...values, deduction_source: "withdrawals" },
+              "Payment"
+            )
+          }
         >
           <Form.Item
             name="amount_usd"
@@ -227,21 +244,6 @@ const TransactionTable = ({ selectedUser, openingBalance }) => {
             rules={[{ required: true, message: "Please input the cause!" }]}
           >
             <Input />
-          </Form.Item>
-          <Form.Item
-            name="deduction_source"
-            label="Deduction Source"
-            rules={[
-              {
-                required: true,
-                message: "Please select the deduction source!",
-              },
-            ]}
-          >
-            <Select placeholder="Select deduction source">
-              <Option value="current">Current Closing</Option>
-              <Option value="withdrawals">Withdrawals</Option>
-            </Select>
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit">

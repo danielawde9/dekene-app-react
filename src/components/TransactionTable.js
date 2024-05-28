@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Table, Button, Modal, Form, Input, InputNumber, Typography } from "antd";
+import { Table, Button, Modal, Form, Input, InputNumber } from "antd";
 import { createClient } from "@supabase/supabase-js";
 import { formatNumber } from "../utils/formatNumber";
 import { ToastContainer, toast } from "react-toastify";
@@ -11,15 +11,15 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const TransactionTable = ({ selectedUser, openingBalance }) => {
   const [transactions, setTransactions] = useState([]);
   const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
-  const [isWithdrawalModalVisible, setIsWithdrawalModalVisible] =
-    useState(false);
+  const [isWithdrawalModalVisible, setIsWithdrawalModalVisible] = useState(false);
   const [form] = Form.useForm();
 
   useEffect(() => {
     async function fetchTransactions() {
       const { data: payments, error: paymentError } = await supabase
         .from("payments")
-        .select("*");
+        .select("*")
+        .eq("deduction_source", "withdrawals");
       const { data: withdrawals, error: withdrawalsError } = await supabase
         .from("withdrawals")
         .select("*");
@@ -37,7 +37,7 @@ const TransactionTable = ({ selectedUser, openingBalance }) => {
         ...withdrawals.map((item) => ({ ...item, type: "Withdrawal" })),
       ];
 
-      transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+      transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
 
       setTransactions(transactions);
     }

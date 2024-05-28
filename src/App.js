@@ -4,7 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import MainScreen from "./components/MainScreen";
-import "./App.css"
+import "./App.css";
+import { Flex, Layout } from "antd";
+import { Content } from "antd/es/layout/layout";
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey = process.env.REACT_APP_SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -46,7 +48,17 @@ const App = () => {
   };
 
   if (!session || !user) {
-    return <Auth supabaseClient={supabase} appearance={{ theme: ThemeSupa }} />;
+    return (
+      <Layout className="layout">
+        <Flex vertical style={{ padding: "0 50px" }}>
+          <Auth
+            supabaseClient={supabase}
+            appearance={{ theme: ThemeSupa }}
+            providers={["google"]}
+          />
+        </Flex>
+      </Layout>
+    );
   } else {
     return <MainScreen user={user} />;
   }

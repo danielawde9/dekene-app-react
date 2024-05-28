@@ -12,6 +12,7 @@ import {
   Switch,
   DatePicker,
   Tabs,
+  Alert,
 } from "antd";
 import { createClient } from "@supabase/supabase-js";
 import DailyBalance from "./DailyBalance";
@@ -50,6 +51,7 @@ const MainScreen = ({ user }) => {
   const [exchangeRate, setExchangeRate] = useState(90000);
   const [manualDateEnabled, setManualDateEnabled] = useState(false);
   const [selectedDate, setSelectedDate] = useState(currentDate);
+  const [missingDates, setMissingDates] = useState([]);
 
   useEffect(() => {
     async function fetchOpeningBalances() {
@@ -94,10 +96,39 @@ const MainScreen = ({ user }) => {
       }
     }
 
+    async function checkMissingDates() {
+      const { data, error } = await supabase
+        .from("dailybalances")
+        .select("date")
+        .order("date", { ascending: true });
+
+      if (error) {
+        toast.error("Error fetching daily balances: " + error.message);
+        return;
+      }
+
+      const dates = data.map((record) => new Date(record.date));
+      const missingDates = [];
+      let date = new Date(dates[0]);
+
+      while (date <= currentDate) {
+        if (
+          date.getDay() !== 0 &&
+          !dates.some((d) => d.getTime() === date.getTime())
+        ) {
+          missingDates.push(new Date(date));
+        }
+        date.setDate(date.getDate() + 1);
+      }
+
+      setMissingDates(missingDates);
+    }
+
     fetchOpeningBalances();
     fetchUsers();
     fetchSettings();
-  }, []);
+    checkMissingDates();
+  }, [currentDate]);
 
   useEffect(() => {
     calculateTotals();
@@ -176,12 +207,32 @@ const MainScreen = ({ user }) => {
     setIsModalVisible(true);
   };
 
+  function formatDateToUTC(selectedDate) {
+    // Create a new Date object with the selected date
+    let localDate = new Date(selectedDate);
+
+    // Adjust the date to UTC without changing the local date
+    let utcDate = new Date(
+      Date.UTC(
+        localDate.getFullYear(),
+        localDate.getMonth(),
+        localDate.getDate(),
+        0,
+        0,
+        0 // Set time to midnight UTC
+      )
+    );
+
+    // Convert to ISO string and split to get the date part
+    return utcDate.toISOString().split("T")[0];
+  }
+
   const handleConfirmSubmit = async () => {
     const { usd: closing_usd, lbp: closing_lbp } = totals.afterWithdrawals;
     const date = manualDateEnabled
-      ? selectedDate.toISOString().split("T")[0]
-      : currentDate.toISOString().split("T")[0];
-
+      ? formatDateToUTC(selectedDate)
+      : formatDateToUTC(currentDate);
+    console.log(date);
     try {
       const { data: balanceData, error: balanceError } = await supabase
         .from("dailybalances")
@@ -208,16 +259,14 @@ const MainScreen = ({ user }) => {
 
       // Insert payments
       for (const payment of payments) {
-        const { error: paymentError } = await supabase
-          .from("payments")
-          .insert([
-            {
-              ...payment,
-              date,
-              user_id: selectedUser,
-              deduction_source: "withdrawals",
-            },
-          ]);
+        const { error: paymentError } = await supabase.from("payments").insert([
+          {
+            ...payment,
+            date,
+            user_id: selectedUser,
+            deduction_source: "withdrawals",
+          },
+        ]);
         if (paymentError) throw paymentError;
 
         // Update withdrawal if necessary
@@ -287,6 +336,16 @@ const MainScreen = ({ user }) => {
           <TabPane tab="Main View" key="1">
             <div className="site-layout-content">
               <h1>Financial Tracking App</h1>
+              {missingDates.length > 0 && (
+                <Alert
+                  message="Missing dates detected"
+                  description={`Please fill out the missing dates: ${missingDates
+                    .map((date) => date.toISOString().split("T")[0])
+                    .join(", ")}`}
+                  type="error"
+                  showIcon
+                />
+              )}
               <Row gutter={16}>
                 <Col span={24}>
                   <DailyBalance
@@ -393,6 +452,7 @@ const MainScreen = ({ user }) => {
                         ]}
                       >
                         <DatePicker
+                          showNow
                           format="YYYY-MM-DD"
                           onChange={(date) => setSelectedDate(date)}
                         />

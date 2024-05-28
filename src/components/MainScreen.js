@@ -339,11 +339,21 @@ const MainScreen = ({ user }) => {
               {missingDates.length > 0 && (
                 <Alert
                   message="Missing dates detected"
-                  description={`Please fill out the missing dates: ${missingDates
-                    .map((date) => date.toISOString().split("T")[0])
-                    .join(", ")}`}
+                  description={
+                    <>
+                      Please fill out the missing dates:
+                      <ul>
+                        {missingDates.map((date) => (
+                          <li key={date.toISOString()}>
+                            {date.toISOString().split("T")[0]}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  }
                   type="error"
                   showIcon
+                  style={{marginBottom:20}}
                 />
               )}
               <Row gutter={16}>

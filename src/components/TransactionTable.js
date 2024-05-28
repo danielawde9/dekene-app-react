@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Table, Button, Modal, Form, Input, InputNumber } from "antd";
+import { Table, Button, Modal, Form, Input, InputNumber, Select } from "antd";
 import { createClient } from "@supabase/supabase-js";
 import { formatNumber } from "../utils/formatNumber";
 import { ToastContainer, toast } from "react-toastify";
@@ -8,10 +8,13 @@ const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey = process.env.REACT_APP_SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const TransactionTable = ({ selectedUser, openingBalance }) => {
+const { Option } = Select;
+
+const TransactionTable = ({ adminUserId, openingBalance }) => {
   const [transactions, setTransactions] = useState([]);
   const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
   const [isWithdrawalModalVisible, setIsWithdrawalModalVisible] = useState(false);
+  const [dailyBalances, setDailyBalances] = useState([]);
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -42,7 +45,17 @@ const TransactionTable = ({ selectedUser, openingBalance }) => {
       setTransactions(transactions);
     }
 
+    async function fetchDailyBalances() {
+      const { data, error } = await supabase.from("dailybalances").select("*");
+      if (error) {
+        toast.error("Error fetching daily balances: " + error.message);
+      } else {
+        setDailyBalances(data);
+      }
+    }
+
     fetchTransactions();
+    fetchDailyBalances();
   }, []);
 
   const calculateBalance = (transactions) => {
@@ -70,12 +83,11 @@ const TransactionTable = ({ selectedUser, openingBalance }) => {
 
   const addTransaction = async (values, type) => {
     try {
-      const date = new Date().toISOString().split("T")[0];
       const transaction = {
         ...values,
-        date,
+        date: values.date,
         type,
-        user_id: selectedUser,
+        user_id: adminUserId,
       };
 
       const { error } = await supabase
@@ -177,7 +189,7 @@ const TransactionTable = ({ selectedUser, openingBalance }) => {
       <Button
         type="primary"
         onClick={() => setIsPaymentModalVisible(true)}
-        style={{ marginRight: 16 }}
+        style={{ marginRight: 16, marginBottom: 20 }}
       >
         Add Payment
       </Button>
@@ -207,6 +219,19 @@ const TransactionTable = ({ selectedUser, openingBalance }) => {
             )
           }
         >
+          <Form.Item
+            name="date"
+            label="Date"
+            rules={[{ required: true, message: "Please select a date!" }]}
+          >
+            <Select>
+              {dailyBalances.map((balance) => (
+                <Option key={balance.id} value={balance.date}>
+                  {balance.date}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
           <Form.Item
             name="amount_usd"
             label="Amount USD"
@@ -263,6 +288,19 @@ const TransactionTable = ({ selectedUser, openingBalance }) => {
           form={form}
           onFinish={(values) => addTransaction(values, "Withdrawal")}
         >
+          <Form.Item
+            name="date"
+            label="Date"
+            rules={[{ required: true, message: "Please select a date!" }]}
+          >
+            <Select>
+              {dailyBalances.map((balance) => (
+                <Option key={balance.id} value={balance.date}>
+                  {balance.date}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
           <Form.Item
             name="amount_usd"
             label="Amount USD"

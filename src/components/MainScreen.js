@@ -207,9 +207,9 @@ const MainScreen = ({ user }) => {
     setIsModalVisible(true);
   };
 
-  function formatDateToUTC(selectedDate) {
+  function formatDateToUTC(date) {
     // Create a new Date object with the selected date
-    let localDate = new Date(selectedDate);
+    let localDate = new Date(date);
 
     // Adjust the date to UTC without changing the local date
     let utcDate = new Date(
@@ -232,7 +232,7 @@ const MainScreen = ({ user }) => {
     const date = manualDateEnabled
       ? formatDateToUTC(selectedDate)
       : formatDateToUTC(currentDate);
-    console.log(date);
+
     try {
       const { data: balanceData, error: balanceError } = await supabase
         .from("dailybalances")
@@ -353,7 +353,7 @@ const MainScreen = ({ user }) => {
                   }
                   type="error"
                   showIcon
-                  style={{marginBottom:20}}
+                  style={{ marginBottom: 20 }}
                 />
               )}
               <Row gutter={16}>
@@ -464,6 +464,13 @@ const MainScreen = ({ user }) => {
                         <DatePicker
                           showNow
                           format="YYYY-MM-DD"
+                          disabledDate={(date) =>
+                            missingDates.some(
+                              (d) =>
+                                d.toISOString().split("T")[0] ===
+                                date.format("YYYY-MM-DD")
+                            )
+                          }
                           onChange={(date) => setSelectedDate(date)}
                         />
                       </Form.Item>

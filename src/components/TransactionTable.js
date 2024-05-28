@@ -58,29 +58,6 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
     fetchDailyBalances();
   }, []);
 
-  const calculateBalance = (transactions) => {
-    let balanceUSD = openingBalance.usd;
-    let balanceLBP = openingBalance.lbp;
-
-    return transactions.map((transaction) => {
-      const { amount_usd = 0, amount_lbp = 0, type } = transaction;
-
-      if (type === "Payment") {
-        balanceUSD -= amount_usd;
-        balanceLBP -= amount_lbp;
-      } else if (type === "Withdrawal") {
-        balanceUSD += amount_usd;
-        balanceLBP += amount_lbp;
-      }
-
-      return {
-        ...transaction,
-        balance_usd: balanceUSD,
-        balance_lbp: balanceLBP,
-      };
-    });
-  };
-
   const addTransaction = async (values, type) => {
     try {
       const transaction = {
@@ -108,6 +85,33 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
       toast.error("Error adding transaction: " + error.message);
     }
   };
+
+  // Function to calculate balance
+  const calculateBalance = (openingBalance, transactions) => {
+    let balanceUSD = openingBalance.usd;
+    let balanceLBP = openingBalance.lbp;
+
+    return transactions.map((transaction) => {
+      const { amount_usd = 0, amount_lbp = 0, type } = transaction;
+
+      if (type === "Payment") {
+        balanceUSD -= amount_usd;
+        balanceLBP -= amount_lbp;
+      } else if (type === "Withdrawal") {
+        balanceUSD += amount_usd;
+        balanceLBP += amount_lbp;
+      }
+
+      return {
+        ...transaction,
+        balance_usd: balanceUSD,
+        balance_lbp: balanceLBP,
+      };
+    });
+  };
+
+  // Calculating balance dynamically
+  const dataSource = calculateBalance(openingBalance, transactions);
 
   const columns = [
     {
@@ -180,8 +184,6 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
       ],
     },
   ];
-
-  const dataSource = calculateBalance(transactions);
 
   return (
     <>

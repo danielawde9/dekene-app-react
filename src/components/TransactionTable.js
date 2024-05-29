@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { Table, Button, Modal, Form, Input, InputNumber, Select } from "antd";
+import {
+  Table,
+  Button,
+  Modal,
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  Card,
+} from "antd";
 import { createClient } from "@supabase/supabase-js";
 import { formatNumber } from "../utils/formatNumber";
 import { ToastContainer, toast } from "react-toastify";
@@ -13,9 +22,9 @@ const { Option } = Select;
 const TransactionTable = ({ adminUserId, openingBalance }) => {
   const [transactions, setTransactions] = useState([]);
   const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
-  const [isWithdrawalModalVisible, setIsWithdrawalModalVisible] = useState(false);
   const [dailyBalances, setDailyBalances] = useState([]);
   const [form] = Form.useForm();
+  const [balance, setBalance] = useState({ usd: 0, lbp: 0 });
 
   useEffect(() => {
     async function fetchTransactions() {
@@ -43,6 +52,29 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
       transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
 
       setTransactions(transactions);
+
+      // Calculate balance
+      const totalWithdrawalsUSD = withdrawals.reduce(
+        (acc, item) => acc + item.amount_usd,
+        0
+      );
+      const totalWithdrawalsLBP = withdrawals.reduce(
+        (acc, item) => acc + item.amount_lbp,
+        0
+      );
+      const totalPaymentsUSD = payments.reduce(
+        (acc, item) => acc + item.amount_usd,
+        0
+      );
+      const totalPaymentsLBP = payments.reduce(
+        (acc, item) => acc + item.amount_lbp,
+        0
+      );
+
+      setBalance({
+        usd: totalWithdrawalsUSD - totalPaymentsUSD,
+        lbp: totalWithdrawalsLBP - totalPaymentsLBP,
+      });
     }
 
     async function fetchDailyBalances() {
@@ -76,42 +108,26 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
       } else {
         setTransactions([transaction, ...transactions]);
         toast.success("Transaction added successfully!");
+        // Recalculate balance
+        if (type === "Payment" && values.deduction_source === "withdrawals") {
+          setBalance((prevBalance) => ({
+            usd: prevBalance.usd - values.amount_usd,
+            lbp: prevBalance.lbp - values.amount_lbp,
+          }));
+        } else if (type === "Withdrawal") {
+          setBalance((prevBalance) => ({
+            usd: prevBalance.usd + values.amount_usd,
+            lbp: prevBalance.lbp + values.amount_lbp,
+          }));
+        }
       }
 
       form.resetFields();
       setIsPaymentModalVisible(false);
-      setIsWithdrawalModalVisible(false);
     } catch (error) {
       toast.error("Error adding transaction: " + error.message);
     }
   };
-
-  // Function to calculate balance
-  const calculateBalance = (openingBalance, transactions) => {
-    let balanceUSD = openingBalance.usd;
-    let balanceLBP = openingBalance.lbp;
-
-    return transactions.map((transaction) => {
-      const { amount_usd = 0, amount_lbp = 0, type } = transaction;
-
-      if (type === "Payment") {
-        balanceUSD -= amount_usd;
-        balanceLBP -= amount_lbp;
-      } else if (type === "Withdrawal") {
-        balanceUSD += amount_usd;
-        balanceLBP += amount_lbp;
-      }
-
-      return {
-        ...transaction,
-        balance_usd: balanceUSD,
-        balance_lbp: balanceLBP,
-      };
-    });
-  };
-
-  // Calculating balance dynamically
-  const dataSource = calculateBalance(openingBalance, transactions);
 
   const columns = [
     {
@@ -129,7 +145,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
       children: [
         {
           title: "USD",
-          dataIndex: "withdrawal_usd",
+          dataIndex: "amount_usd",
           key: "withdrawal_usd",
           render: (text, record) =>
             record.type === "Withdrawal"
@@ -138,7 +154,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
         },
         {
           title: "LBP",
-          dataIndex: "withdrawal_lbp",
+          dataIndex: "amount_lbp",
           key: "withdrawal_lbp",
           render: (text, record) =>
             record.type === "Withdrawal"
@@ -152,34 +168,17 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
       children: [
         {
           title: "USD",
-          dataIndex: "payment_usd",
+          dataIndex: "amount_usd",
           key: "payment_usd",
           render: (text, record) =>
             record.type === "Payment" ? formatNumber(record.amount_usd) : null,
         },
         {
           title: "LBP",
-          dataIndex: "payment_lbp",
+          dataIndex: "amount_lbp",
           key: "payment_lbp",
           render: (text, record) =>
             record.type === "Payment" ? formatNumber(record.amount_lbp) : null,
-        },
-      ],
-    },
-    {
-      title: "Balance",
-      children: [
-        {
-          title: "USD",
-          dataIndex: "balance_usd",
-          key: "balance_usd",
-          render: (text) => formatNumber(text),
-        },
-        {
-          title: "LBP",
-          dataIndex: "balance_lbp",
-          key: "balance_lbp",
-          render: (text) => formatNumber(text),
         },
       ],
     },
@@ -195,16 +194,18 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
       >
         Add Payment
       </Button>
-      <Button type="primary" onClick={() => setIsWithdrawalModalVisible(true)}>
-        Add Withdrawal
-      </Button>
 
       <Table
         scroll={{ x: true }}
-        dataSource={dataSource}
+        dataSource={transactions}
         columns={columns}
         rowKey="id"
       />
+
+      <Card title="Current Balance">
+        <p>USD: {formatNumber(balance.usd)}</p>
+        <p>LBP: {formatNumber(balance.lbp)}</p>
+      </Card>
 
       <Modal
         title="Add Payment"
@@ -275,59 +276,6 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
           <Form.Item>
             <Button type="primary" htmlType="submit">
               Add Payment
-            </Button>
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title="Add Withdrawal"
-        open={isWithdrawalModalVisible}
-        onCancel={() => setIsWithdrawalModalVisible(false)}
-        footer={null}
-      >
-        <Form
-          form={form}
-          onFinish={(values) => addTransaction(values, "Withdrawal")}
-        >
-          <Form.Item
-            name="date"
-            label="Date"
-            rules={[{ required: true, message: "Please select a date!" }]}
-          >
-            <Select>
-              {dailyBalances.map((balance) => (
-                <Option key={balance.id} value={balance.date}>
-                  {balance.date}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="amount_usd"
-            label="Amount USD"
-            rules={[{ required: true, message: "Please input amount in USD!" }]}
-          >
-            <InputNumber
-              formatter={(value) => formatNumber(value)}
-              parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
-              style={{ width: "100%" }}
-            />
-          </Form.Item>
-          <Form.Item
-            name="amount_lbp"
-            label="Amount LBP"
-            rules={[{ required: true, message: "Please input amount in LBP!" }]}
-          >
-            <InputNumber
-              formatter={(value) => formatNumber(value)}
-              parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
-              style={{ width: "100%" }}
-            />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit">
-              Add Withdrawal
             </Button>
           </Form.Item>
         </Form>

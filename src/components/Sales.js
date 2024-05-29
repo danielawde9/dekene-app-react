@@ -26,7 +26,7 @@ const columns = (handleDelete) => [
     },
 ];
 
-function Sales({ addSale, selectedUser }) {
+function Sales({ addSale, selectedUser , onDelete}) {
     const [form] = Form.useForm();
     const [sales, setSales] = React.useState([]);
 
@@ -41,7 +41,12 @@ function Sales({ addSale, selectedUser }) {
     const handleDelete = (key) => {
         const newSales = sales.filter((item) => item.key !== key);
         setSales(newSales);
+        // Call the parent component's calculateTotals function
+        if (onDelete) {
+            onDelete(newSales);
+        }
     };
+    
 
     return (
         <Card title="Sales">

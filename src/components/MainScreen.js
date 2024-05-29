@@ -24,7 +24,7 @@ import TransactionTable from "./TransactionTable";
 import LineChartComponent from "./LineChartComponent";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { formatNumber } from "../utils/formatNumber";
+import { formatDateToUTC, formatNumber } from "../utils/formatNumber";
 
 const { Content, Footer } = Layout;
 const { Option } = Select;
@@ -134,20 +134,33 @@ const MainScreen = ({ user }) => {
     calculateTotals();
   }, [credits, payments, sales, withdrawals]);
 
+  const handleTransactionChange = () => {
+    calculateTotals();
+  };
+
   const addCredit = (credit) => {
     setCredits([...credits, credit]);
+    handleTransactionChange();
   };
 
   const addPayment = (payment) => {
     setPayments([...payments, payment]);
+    handleTransactionChange();
   };
 
   const addSale = (sale) => {
     setSales([...sales, sale]);
+    handleTransactionChange();
   };
 
   const addWithdrawal = (withdrawal) => {
     setWithdrawals([...withdrawals, withdrawal]);
+    handleTransactionChange();
+  };
+
+  const handleDelete = (updatedTransactions) => {
+    // calculateTotals(updatedTransactions);
+    handleTransactionChange()
   };
 
   const calculateTotals = () => {
@@ -160,11 +173,17 @@ const MainScreen = ({ user }) => {
       0
     );
     const totalPaymentsUSD = payments.reduce(
-      (acc, payment) => acc + payment.amount_usd,
+      (acc, payment) =>
+        payment.deduction_source !== "withdrawals"
+          ? acc + payment.amount_usd
+          : acc,
       0
     );
     const totalPaymentsLBP = payments.reduce(
-      (acc, payment) => acc + payment.amount_lbp,
+      (acc, payment) =>
+        payment.deduction_source !== "withdrawals"
+          ? acc + payment.amount_lbp
+          : acc,
       0
     );
     const totalSalesUSD = sales.reduce((acc, sale) => acc + sale.amount_usd, 0);
@@ -207,25 +226,6 @@ const MainScreen = ({ user }) => {
     setIsModalVisible(true);
   };
 
-  function formatDateToUTC(date) {
-    // Create a new Date object with the selected date
-    let localDate = new Date(date);
-
-    // Adjust the date to UTC without changing the local date
-    let utcDate = new Date(
-      Date.UTC(
-        localDate.getFullYear(),
-        localDate.getMonth(),
-        localDate.getDate(),
-        0,
-        0,
-        0 // Set time to midnight UTC
-      )
-    );
-
-    // Convert to ISO string and split to get the date part
-    return utcDate.toISOString().split("T")[0];
-  }
 
   const handleConfirmSubmit = async () => {
     const { usd: closing_usd, lbp: closing_lbp } = totals.afterWithdrawals;
@@ -366,23 +366,33 @@ const MainScreen = ({ user }) => {
               </Row>
               <Row gutter={16} style={{ marginTop: "20px" }}>
                 <Col span={12}>
-                  <Credits addCredit={addCredit} selectedUser={selectedUser} />
+                  <Credits
+                    addCredit={addCredit}
+                    selectedUser={selectedUser}
+                    onDelete={handleDelete}
+                  />
                 </Col>
                 <Col span={12}>
                   <Payments
                     addPayment={addPayment}
                     selectedUser={selectedUser}
+                    onDelete={handleDelete}
                   />
                 </Col>
               </Row>
               <Row gutter={16} style={{ marginTop: "20px" }}>
                 <Col span={12}>
-                  <Sales addSale={addSale} selectedUser={selectedUser} />
+                  <Sales
+                    addSale={addSale}
+                    selectedUser={selectedUser}
+                    onDelete={handleDelete}
+                  />
                 </Col>
                 <Col span={12}>
                   <Withdrawals
                     addWithdrawal={addWithdrawal}
                     selectedUser={selectedUser}
+                    onDelete={handleDelete}
                   />
                 </Col>
               </Row>

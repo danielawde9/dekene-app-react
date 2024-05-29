@@ -4,9 +4,7 @@ first in the main screen if the payment type is the withdrawals it should not be
 add loading
 fix auth screen layout
 add login google 
-remove signup 
 
-test admin
 rename stuff
 
 ## Pass

@@ -43,7 +43,7 @@ const columns = (handleDelete) => [
     },
 ];
 
-function Payments({ addPayment, selectedUser }) {
+function Payments({ addPayment, selectedUser, onDelete }) {
     const [form] = Form.useForm();
     const [payments, setPayments] = React.useState([]);
 
@@ -58,7 +58,12 @@ function Payments({ addPayment, selectedUser }) {
     const handleDelete = (key) => {
         const newPayments = payments.filter((item) => item.key !== key);
         setPayments(newPayments);
+        // Call the parent component's calculateTotals function
+        if (onDelete) {
+            onDelete(newPayments);
+        }
     };
+    
 
     return (
         <Card title="Payments">

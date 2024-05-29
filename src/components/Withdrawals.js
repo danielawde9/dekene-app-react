@@ -29,7 +29,7 @@ const columns = (handleDelete) => [
   },
 ];
 
-function Withdrawals({ addWithdrawal, selectedUser }) {
+function Withdrawals({ addWithdrawal, selectedUser, onDelete }) {
   const [form] = Form.useForm();
   const [withdrawals, setWithdrawals] = React.useState([]);
 
@@ -44,9 +44,14 @@ function Withdrawals({ addWithdrawal, selectedUser }) {
   };
 
   const handleDelete = (key) => {
-    const newWithdrawals = withdrawals.filter((item) => item.key !== key);
-    setWithdrawals(newWithdrawals);
-  };
+    const newWithdrawal = withdrawals.filter((item) => item.key !== key);
+    setWithdrawals(newWithdrawal);
+    // Call the parent component's calculateTotals function
+    if (onDelete) {
+        onDelete(newWithdrawal);
+    }
+};
+
 
   return (
     <Card title="Withdrawals">

@@ -55,6 +55,7 @@ const App = () => {
             supabaseClient={supabase}
             appearance={{ theme: ThemeSupa }}
             providers={["google"]}
+            showLinks={false}
           />
         </Flex>
       </Layout>

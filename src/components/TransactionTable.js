@@ -25,7 +25,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
   const [dailyBalances, setDailyBalances] = useState([]);
   const [form] = Form.useForm();
   const [balance, setBalance] = useState({ usd: 0, lbp: 0 });
-
+  const [isLoading, setIsLoading] = useState(true);
   useEffect(() => {
     async function fetchTransactions() {
       const { data: payments, error: paymentError } = await supabase
@@ -75,6 +75,8 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
         usd: totalWithdrawalsUSD - totalPaymentsUSD,
         lbp: totalWithdrawalsLBP - totalPaymentsLBP,
       });
+
+      setIsLoading(false);
     }
 
     async function fetchDailyBalances() {
@@ -196,6 +198,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
       </Button>
 
       <Table
+        loading={isLoading}
         scroll={{ x: true }}
         dataSource={transactions}
         columns={columns}

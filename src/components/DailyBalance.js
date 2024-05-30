@@ -1,16 +1,15 @@
-// src/components/DailyBalance.js
 import React from 'react';
-import { Card } from 'antd';
+import { Card, Typography } from 'antd';
 import { formatNumber } from '../utils/formatNumber';
 
-function DailyBalance({ openingBalances }) {
+const DailyBalance = React.memo(({ openingBalances }) => {
     return (
         <Card title="Opening Balance">
-            <p>Date: {openingBalances.date}</p>
-            <p>Closing USD: {formatNumber(openingBalances.usd)}</p>
-            <p>Closing LBP: {formatNumber(openingBalances.lbp)}</p>
+            <Typography.Title level={5}>Date: {openingBalances.date}</Typography.Title>
+            <Typography.Title level={5}>Closing USD: {formatNumber(openingBalances.usd)}</Typography.Title>
+            <Typography.Title level={5}>Closing LBP: {formatNumber(openingBalances.lbp)}</Typography.Title>
         </Card>
     );
-}
+});
 
 export default DailyBalance;

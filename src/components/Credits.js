@@ -10,7 +10,7 @@ import {
 } from "antd";
 import { formatNumber } from "../utils/formatNumber";
 
-const columns = (handleDelete) => [
+const columns = () => [
   {
     title: "Amount USD",
     dataIndex: "amount_usd",
@@ -28,21 +28,9 @@ const columns = (handleDelete) => [
     dataIndex: "person",
     key: "person",
   },
-  {
-    title: "Action",
-    key: "action",
-    render: (text, record) => (
-      <Popconfirm
-        title="Sure to delete?"
-        onConfirm={() => handleDelete(record.key)}
-      >
-        <Button type="link">Delete</Button>
-      </Popconfirm>
-    ),
-  },
 ];
 
-function Credits({ addCredit, selectedUser, onDelete }) {
+const Credits = React.memo(({ addCredit, selectedUser }) => {
   const [form] = Form.useForm();
   const [credits, setCredits] = React.useState([]);
 
@@ -52,15 +40,6 @@ function Credits({ addCredit, selectedUser, onDelete }) {
     setCredits([...credits, newCredit]);
     addCredit(newCredit);
     form.resetFields();
-  };
-
-  const handleDelete = (key) => {
-    const newCredits = credits.filter((item) => item.key !== key);
-    setCredits(newCredits);
-    // Call the parent component's calculateTotals function
-    if (onDelete) {
-      onDelete(newCredits);
-    }
   };
 
   return (
@@ -101,13 +80,9 @@ function Credits({ addCredit, selectedUser, onDelete }) {
           </Button>
         </Form.Item>
       </Form>
-      <Table
-        dataSource={credits}
-        columns={columns(handleDelete)}
-        rowKey="key"
-      />
+      <Table dataSource={credits} columns={columns()} rowKey="key" />
     </Card>
   );
-}
+});
 
 export default Credits;

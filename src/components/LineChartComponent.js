@@ -1,5 +1,4 @@
-// src/components/LineChartComponent.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -18,21 +17,20 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const LineChartComponent = () => {
   const [data, setData] = useState([]);
-
   useEffect(() => {
-    async function fetchTransactions() {
+    const fetchTransactions = async () => {
       const { data: credits, error: creditError } = await supabase
         .from("credits")
-        .select("date, amount_usd");
+        .select("date, amount_usd, amount_lbp");
       const { data: payments, error: paymentError } = await supabase
         .from("payments")
-        .select("date, amount_usd");
+        .select("date, amount_usd, amount_lbp");
       const { data: sales, error: salesError } = await supabase
         .from("sales")
-        .select("date, amount_usd");
+        .select("date, amount_usd, amount_lbp");
       const { data: withdrawals, error: withdrawalsError } = await supabase
         .from("withdrawals")
-        .select("date, amount_usd");
+        .select("date, amount_usd, amount_lbp");
 
       if (creditError || paymentError || salesError || withdrawalsError) {
         console.error(
@@ -63,7 +61,6 @@ const LineChartComponent = () => {
           })),
         ];
 
-        // Group by date
         const groupedData = combinedData.reduce((acc, item) => {
           const date = item.date;
           if (!acc[date])
@@ -72,17 +69,18 @@ const LineChartComponent = () => {
           return acc;
         }, {});
 
-        // Convert to array
         setData(Object.values(groupedData));
       }
-    }
+    };
 
     fetchTransactions();
   }, []);
 
+  const memoizedData = useMemo(() => data, [data]);
+
   return (
-    <ResponsiveContainer width="100%" >
-      <LineChart data={data}>
+    <ResponsiveContainer width="100%">
+      <LineChart data={memoizedData}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="date" />
         <YAxis />
@@ -94,7 +92,7 @@ const LineChartComponent = () => {
         <Line
           type="monotone"
           dataKey="Withdrawal"
-          name="Daniel"
+          name="Withdrawal"
           stroke="#ff7300"
         />
       </LineChart>

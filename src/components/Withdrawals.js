@@ -1,8 +1,8 @@
 import React from "react";
-import { Card, Table, Button, InputNumber, Form, Popconfirm } from "antd";
+import { Card, Table, Button, InputNumber, Form } from "antd";
 import { formatNumber } from "../utils/formatNumber";
 
-const columns = (handleDelete) => [
+const columns = () => [
   {
     title: "Amount USD",
     dataIndex: "amount_usd",
@@ -14,44 +14,29 @@ const columns = (handleDelete) => [
     dataIndex: "amount_lbp",
     key: "amount_lbp",
     render: (text) => formatNumber(text),
-  },
-  {
-    title: "Action",
-    key: "action",
-    render: (text, record) => (
-      <Popconfirm
-        title="Sure to delete?"
-        onConfirm={() => handleDelete(record.key)}
-      >
-        <Button type="link">Delete</Button>
-      </Popconfirm>
-    ),
-  },
+  }
 ];
 
-function Withdrawals({ addWithdrawal, selectedUser, onDelete }) {
+const Withdrawals = React.memo(({ addWithdrawal, selectedUser, onDelete }) => {
   const [form] = Form.useForm();
   const [withdrawals, setWithdrawals] = React.useState([]);
 
   const onFinish = (values) => {
-    const key = withdrawals.length
-      ? withdrawals[withdrawals.length - 1].key + 1
-      : 0;
+    // const newWithdrawal = { ...values, user_id: selectedUser };
+    const key = withdrawals.length ? withdrawals[withdrawals.length - 1].key + 1 : 0;
     const newWithdrawal = { ...values, key, user_id: selectedUser };
-    setWithdrawals([...withdrawals, newWithdrawal]);
+
+    setWithdrawals([newWithdrawal]);
     addWithdrawal(newWithdrawal);
     form.resetFields();
   };
 
-  const handleDelete = (key) => {
-    const newWithdrawal = withdrawals.filter((item) => item.key !== key);
-    setWithdrawals(newWithdrawal);
-    // Call the parent component's calculateTotals function
+  const handleDelete = () => {
+    setWithdrawals([]);
     if (onDelete) {
-        onDelete(newWithdrawal);
+      onDelete([]);
     }
-};
-
+  };
 
   return (
     <Card title="Withdrawals">
@@ -86,11 +71,17 @@ function Withdrawals({ addWithdrawal, selectedUser, onDelete }) {
       </Form>
       <Table
         dataSource={withdrawals}
-        columns={columns(handleDelete)}
-        rowKey="key"
+        columns={columns()}
+        rowKey="user_id"
+        pagination={false}
+        onRow={(record, rowIndex) => {
+          return {
+            onDoubleClick: () => handleDelete(),
+          };
+        }}
       />
     </Card>
   );
-}
+});
 
 export default Withdrawals;

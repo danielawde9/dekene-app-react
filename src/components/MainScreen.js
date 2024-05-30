@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Layout,
   Row,
@@ -13,6 +13,7 @@ import {
   DatePicker,
   Tabs,
   Alert,
+  Typography,
 } from "antd";
 import { createClient } from "@supabase/supabase-js";
 import DailyBalance from "./DailyBalance";
@@ -25,10 +26,10 @@ import LineChartComponent from "./LineChartComponent";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { formatDateToUTC, formatNumber } from "../utils/formatNumber";
+import Item from "antd/es/list/Item";
 
 const { Content, Footer } = Layout;
 const { Option } = Select;
-const { TabPane } = Tabs;
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey = process.env.REACT_APP_SUPABASE_KEY;
@@ -54,116 +55,129 @@ const MainScreen = ({ user }) => {
   const [missingDates, setMissingDates] = useState([]);
 
   useEffect(() => {
-    async function fetchOpeningBalances() {
-      const { data, error } = await supabase
-        .from("dailybalances")
-        .select("*")
-        .order("date", { ascending: false })
-        .limit(1);
+    const fetchData = async () => {
+      const fetchOpeningBalances = async () => {
+        const { data, error } = await supabase
+          .from("dailybalances")
+          .select("*")
+          .order("date", { ascending: false })
+          .limit(1);
 
-      if (error) {
-        toast.error("Error fetching opening balances: " + error.message);
-      } else {
-        const lastDayBalance = data[0];
-        setOpeningBalances({
-          date: lastDayBalance ? lastDayBalance.date : "no date found",
-          usd: lastDayBalance ? lastDayBalance.closing_usd : 0,
-          lbp: lastDayBalance ? lastDayBalance.closing_lbp : 0,
-        });
-      }
-    }
-
-    async function fetchUsers() {
-      const { data, error } = await supabase.from("users").select("*");
-
-      if (error) {
-        toast.error("Error fetching users: " + error.message);
-      } else {
-        setUsers(data);
-      }
-    }
-
-    async function fetchSettings() {
-      const { data, error } = await supabase
-        .from("settings")
-        .select("*")
-        .limit(1);
-
-      if (error) {
-        toast.error("Error fetching settings: " + error.message);
-      } else if (data.length > 0) {
-        setManualDateEnabled(data[0].manual_date_enabled);
-      }
-    }
-
-    async function checkMissingDates() {
-      const { data, error } = await supabase
-        .from("dailybalances")
-        .select("date")
-        .order("date", { ascending: true });
-
-      if (error) {
-        toast.error("Error fetching daily balances: " + error.message);
-        return;
-      }
-
-      const dates = data.map((record) => new Date(record.date));
-      const missingDates = [];
-      let date = new Date(dates[0]);
-
-      while (date <= currentDate) {
-        if (
-          date.getDay() !== 0 &&
-          !dates.some((d) => d.getTime() === date.getTime())
-        ) {
-          missingDates.push(new Date(date));
+        if (error) {
+          toast.error("Error fetching opening balances: " + error.message);
+        } else {
+          const lastDayBalance = data[0];
+          setOpeningBalances({
+            date: lastDayBalance ? lastDayBalance.date : "no date found",
+            usd: lastDayBalance ? lastDayBalance.closing_usd : 0,
+            lbp: lastDayBalance ? lastDayBalance.closing_lbp : 0,
+          });
         }
-        date.setDate(date.getDate() + 1);
-      }
+      };
 
-      setMissingDates(missingDates);
-    }
+      const fetchUsers = async () => {
+        const { data, error } = await supabase.from("users").select("*");
 
-    fetchOpeningBalances();
-    fetchUsers();
-    fetchSettings();
-    checkMissingDates();
+        if (error) {
+          toast.error("Error fetching users: " + error.message);
+        } else {
+          setUsers(data);
+        }
+      };
+
+      const fetchSettings = async () => {
+        const { data, error } = await supabase
+          .from("settings")
+          .select("*")
+          .limit(1);
+
+        if (error) {
+          toast.error("Error fetching settings: " + error.message);
+        } else if (data.length > 0) {
+          setManualDateEnabled(data[0].manual_date_enabled);
+        }
+      };
+
+      const checkMissingDates = async () => {
+        const { data, error } = await supabase
+          .from("dailybalances")
+          .select("date")
+          .order("date", { ascending: true });
+
+        if (error) {
+          toast.error("Error fetching daily balances: " + error.message);
+          return;
+        }
+
+        const dates = data.map((record) => new Date(record.date));
+        const missingDates = [];
+        let date = new Date(dates[0]);
+
+        while (date <= currentDate) {
+          if (
+            date.getDay() !== 0 &&
+            !dates.some((d) => d.getTime() === date.getTime())
+          ) {
+            missingDates.push(new Date(date));
+          }
+          date.setDate(date.getDate() + 1);
+        }
+
+        setMissingDates(missingDates);
+      };
+
+      await Promise.all([
+        fetchOpeningBalances(),
+        fetchUsers(),
+        fetchSettings(),
+        checkMissingDates(),
+      ]);
+    };
+
+    fetchData();
   }, [currentDate]);
 
   useEffect(() => {
     calculateTotals();
   }, [credits, payments, sales, withdrawals]);
 
-  const handleTransactionChange = () => {
+  const handleTransactionChange = useCallback(() => {
     calculateTotals();
-  };
+  }, [credits, payments, sales, withdrawals]);
 
-  const addCredit = (credit) => {
-    setCredits([...credits, credit]);
-    handleTransactionChange();
-  };
+  const addCredit = useCallback(
+    (credit) => {
+      setCredits([...credits, credit]);
+      handleTransactionChange();
+    },
+    [credits, handleTransactionChange]
+  );
 
-  const addPayment = (payment) => {
-    setPayments([...payments, payment]);
-    handleTransactionChange();
-  };
+  const addPayment = useCallback(
+    (payment) => {
+      setPayments([...payments, payment]);
+      handleTransactionChange();
+    },
+    [payments, handleTransactionChange]
+  );
 
-  const addSale = (sale) => {
-    setSales([...sales, sale]);
-    handleTransactionChange();
-  };
+  const addSale = useCallback(
+    (sale) => {
+      setSales([...sales, sale]);
+      handleTransactionChange();
+    },
+    [sales, handleTransactionChange]
+  );
 
-  const addWithdrawal = (withdrawal) => {
-    setWithdrawals([...withdrawals, withdrawal]);
-    handleTransactionChange();
-  };
+  const addWithdrawal = useCallback(
+    (withdrawal) => {
+      setWithdrawals([...withdrawals, withdrawal]);
+      handleTransactionChange();
+    },
+    [withdrawals, handleTransactionChange]
+  );
 
-  const handleDelete = (updatedTransactions) => {
-    // calculateTotals(updatedTransactions);
-    handleTransactionChange()
-  };
-
-  const calculateTotals = () => {
+  const calculateTotals = useCallback(() => {
     const totalCreditsUSD = credits.reduce(
       (acc, credit) => acc + credit.amount_usd,
       0
@@ -212,9 +226,9 @@ const MainScreen = ({ user }) => {
       },
       afterWithdrawals: { usd: afterWithdrawalsUSD, lbp: afterWithdrawalsLBP },
     });
-  };
+  }, [credits, payments, sales, withdrawals, openingBalances]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!selectedUser) {
       toast.error("Please select an employee to close the day.");
       return;
@@ -224,10 +238,9 @@ const MainScreen = ({ user }) => {
       return;
     }
     setIsModalVisible(true);
-  };
+  }, [selectedUser, sales, withdrawals]);
 
-
-  const handleConfirmSubmit = async () => {
+  const handleConfirmSubmit = useCallback(async () => {
     const { usd: closing_usd, lbp: closing_lbp } = totals.afterWithdrawals;
     const date = manualDateEnabled
       ? formatDateToUTC(selectedDate)
@@ -309,13 +322,27 @@ const MainScreen = ({ user }) => {
     } catch (error) {
       toast.error("Error submitting transactions: " + error.message);
     }
-  };
+  }, [
+    selectedUser,
+    openingBalances,
+    credits,
+    payments,
+    sales,
+    withdrawals,
+    totals,
+    manualDateEnabled,
+    selectedDate,
+    currentDate,
+  ]);
 
-  const calculateTotalInUSD = (usd, lbp) => {
-    return usd + lbp / exchangeRate;
-  };
+  const calculateTotalInUSD = useCallback(
+    (usd, lbp) => {
+      return usd + lbp / exchangeRate;
+    },
+    [exchangeRate]
+  );
 
-  const handleSwitchChange = async (checked) => {
+  const handleSwitchChange = useCallback(async (checked) => {
     setManualDateEnabled(checked);
     try {
       const { data, error } = await supabase
@@ -326,14 +353,14 @@ const MainScreen = ({ user }) => {
     } catch (error) {
       toast.error("Error updating settings: " + error.message);
     }
-  };
+  }, []);
 
   return (
     <Layout className="layout">
       <ToastContainer />
       <Content style={{ padding: "0 50px" }}>
         <Tabs defaultActiveKey="1">
-          <TabPane tab="Main View" key="1">
+          <Item tab="Main View" key="1">
             <div className="site-layout-content">
               <h1>Financial Tracking App</h1>
               {missingDates.length > 0 && (
@@ -357,7 +384,7 @@ const MainScreen = ({ user }) => {
                 />
               )}
               <Row gutter={16}>
-                <Col span={24}>
+                <Col xs={24} span={24}>
                   <DailyBalance
                     date={currentDate}
                     openingBalances={openingBalances}
@@ -365,42 +392,36 @@ const MainScreen = ({ user }) => {
                 </Col>
               </Row>
               <Row gutter={16} style={{ marginTop: "20px" }}>
-                <Col span={12}>
-                  <Credits
-                    addCredit={addCredit}
-                    selectedUser={selectedUser}
-                    onDelete={handleDelete}
-                  />
+                <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
+                  <Credits addCredit={addCredit} selectedUser={selectedUser} />
                 </Col>
-                <Col span={12}>
+                <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
                   <Payments
                     addPayment={addPayment}
                     selectedUser={selectedUser}
-                    onDelete={handleDelete}
                   />
                 </Col>
               </Row>
               <Row gutter={16} style={{ marginTop: "20px" }}>
-                <Col span={12}>
-                  <Sales
-                    addSale={addSale}
-                    selectedUser={selectedUser}
-                    onDelete={handleDelete}
-                  />
+                <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
+                  <Sales addSale={addSale} selectedUser={selectedUser} />
                 </Col>
-                <Col span={12}>
+                <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
                   <Withdrawals
                     addWithdrawal={addWithdrawal}
                     selectedUser={selectedUser}
-                    onDelete={handleDelete}
                   />
                 </Col>
               </Row>
-              <Row gutter={16} style={{ marginTop: "20px" }}>
-                <Col span={12}>
+              <Row gutter={16}>
+                <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
                   <Card title="Totals Before Withdrawals">
-                    <p>USD: {totals.beforeWithdrawals.usd.toLocaleString()}</p>
-                    <p>LBP: {totals.beforeWithdrawals.lbp.toLocaleString()}</p>
+                    <Typography.Title level={5}>
+                      USD: {totals.beforeWithdrawals.usd.toLocaleString()}
+                    </Typography.Title>
+                    <Typography.Title level={5}>
+                      LBP: {totals.beforeWithdrawals.lbp.toLocaleString()}
+                    </Typography.Title>
                     <Form.Item
                       label="Exchange Rate"
                       style={{ marginTop: "10px" }}
@@ -413,26 +434,30 @@ const MainScreen = ({ user }) => {
                         style={{ width: "100%" }}
                       />
                     </Form.Item>
-                    <p>
+                    <Typography.Title level={5}>
                       Total in USD:{" "}
                       {calculateTotalInUSD(
                         totals.beforeWithdrawals.usd,
                         totals.beforeWithdrawals.lbp
                       ).toLocaleString()}
-                    </p>
+                    </Typography.Title>
                   </Card>
                 </Col>
-                <Col span={12}>
+                <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
                   <Card title="Totals After Withdrawals">
-                    <p>USD: {totals.afterWithdrawals.usd.toLocaleString()}</p>
-                    <p>LBP: {totals.afterWithdrawals.lbp.toLocaleString()}</p>
-                    <p>
+                    <Typography.Title level={5}>
+                      USD: {totals.afterWithdrawals.usd.toLocaleString()}
+                    </Typography.Title>
+                    <Typography.Title level={5}>
+                      LBP: {totals.afterWithdrawals.lbp.toLocaleString()}
+                    </Typography.Title>
+                    <Typography.Title level={5}>
                       Total in USD:{" "}
                       {calculateTotalInUSD(
                         totals.afterWithdrawals.usd,
                         totals.afterWithdrawals.lbp
                       ).toLocaleString()}
-                    </p>
+                    </Typography.Title>
                   </Card>
                 </Col>
               </Row>
@@ -440,7 +465,7 @@ const MainScreen = ({ user }) => {
                 gutter={16}
                 style={{ marginTop: "20px", textAlign: "center" }}
               >
-                <Col span={24}>
+                <Col xs={24} span={24}>
                   <Form>
                     <Form.Item
                       name="closing_employee"
@@ -507,9 +532,9 @@ const MainScreen = ({ user }) => {
                 <p>Withdrawals: {withdrawals.length}</p>
               </Modal>
             </div>
-          </TabPane>
+          </Item>
           {user.role === "admin" && (
-            <TabPane tab="Admin Dashboard" key="2">
+            <Item tab="Admin Dashboard" key="2">
               <div style={{ marginTop: "40px" }}>
                 <h2>Admin Dashboard</h2>
                 <p>Switch to enable user to enter date manually</p>
@@ -526,9 +551,9 @@ const MainScreen = ({ user }) => {
                   selectedUser={selectedUser}
                   openingBalance={openingBalances}
                 />
-                <LineChartComponent />
+                {/* <LineChartComponent /> */}
               </div>
-            </TabPane>
+            </Item>
           )}
         </Tabs>
       </Content>

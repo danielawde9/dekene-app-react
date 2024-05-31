@@ -1,8 +1,8 @@
 import React from "react";
-import { Card, Table, Button, InputNumber, Form } from "antd";
+import { Card, Table, Button, InputNumber, Form, Popconfirm } from "antd";
 import { formatNumber } from "../utils/formatNumber";
 
-const columns = () => [
+const columns = (handleDelete) => [
   {
     title: "Amount USD",
     dataIndex: "amount_usd",
@@ -14,7 +14,19 @@ const columns = () => [
     dataIndex: "amount_lbp",
     key: "amount_lbp",
     render: (text) => formatNumber(text),
-  }
+  },
+  {
+    title: "Action",
+    key: "action",
+    render: (text, record) => (
+      <Popconfirm
+        title="Sure to delete?"
+        onConfirm={() => handleDelete(record.key)}
+      >
+        <Button type="link">Delete</Button>
+      </Popconfirm>
+    ),
+  },
 ];
 
 const Sales = React.memo(({ addSale, selectedUser, onDelete }) => {
@@ -28,11 +40,9 @@ const Sales = React.memo(({ addSale, selectedUser, onDelete }) => {
     form.resetFields();
   };
 
-  const handleDelete = () => {
-    setSales([]);
-    if (onDelete) {
-      onDelete([]);
-    }
+  const handleDelete = (key) => {
+    const newSales = sales.filter((item) => item.key !== key);
+    setSales(newSales);
   };
 
   return (
@@ -68,14 +78,9 @@ const Sales = React.memo(({ addSale, selectedUser, onDelete }) => {
       </Form>
       <Table
         dataSource={sales}
-        columns={columns()}
+        columns={columns(handleDelete)}
         rowKey="user_id"
         pagination={false}
-        onRow={(record, rowIndex) => {
-          return {
-            onDoubleClick: () => handleDelete(),
-          };
-        }}
       />
     </Card>
   );

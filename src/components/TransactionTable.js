@@ -205,7 +205,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
         rowKey="id"
       />
 
-      <Card title="Current Balance">
+      <Card title="Current Balance" style={{marginTop: 20}}>
         <p>USD: {formatNumber(balance.usd)}</p>
         <p>LBP: {formatNumber(balance.lbp)}</p>
       </Card>

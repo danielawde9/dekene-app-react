@@ -10,7 +10,7 @@ import {
 } from "antd";
 import { formatNumber } from "../utils/formatNumber";
 
-const columns = () => [
+const columns = (handleDelete) => [
   {
     title: "Amount USD",
     dataIndex: "amount_usd",
@@ -28,6 +28,18 @@ const columns = () => [
     dataIndex: "person",
     key: "person",
   },
+  {
+    title: "Action",
+    key: "action",
+    render: (text, record) => (
+      <Popconfirm
+        title="Sure to delete?"
+        onConfirm={() => handleDelete(record.key)}
+      >
+        <Button type="link">Delete</Button>
+      </Popconfirm>
+    ),
+  },
 ];
 
 const Credits = React.memo(({ addCredit, selectedUser }) => {
@@ -40,6 +52,11 @@ const Credits = React.memo(({ addCredit, selectedUser }) => {
     setCredits([...credits, newCredit]);
     addCredit(newCredit);
     form.resetFields();
+  };
+
+  const handleDelete = (key) => {
+    const newCredits = credits.filter((item) => item.key !== key);
+    setCredits(newCredits);
   };
 
   return (
@@ -80,7 +97,11 @@ const Credits = React.memo(({ addCredit, selectedUser }) => {
           </Button>
         </Form.Item>
       </Form>
-      <Table dataSource={credits} columns={columns()} rowKey="key" />
+      <Table
+        dataSource={credits}
+        columns={columns(handleDelete)}
+        rowKey="key"
+      />
     </Card>
   );
 });

@@ -13,7 +13,7 @@ import { formatNumber } from "../utils/formatNumber";
 
 const { Option } = Select;
 
-const columns = () => [
+const columns = (handleDelete) => [
   {
     title: "Amount USD",
     dataIndex: "amount_usd",
@@ -41,6 +41,19 @@ const columns = () => [
     dataIndex: "deduction_source",
     key: "deduction_source",
   },
+
+  {
+    title: "Action",
+    key: "action",
+    render: (text, record) => (
+      <Popconfirm
+        title="Sure to delete?"
+        onConfirm={() => handleDelete(record.key)}
+      >
+        <Button type="link">Delete</Button>
+      </Popconfirm>
+    ),
+  },
 ];
 const Payments = React.memo(({ addPayment, selectedUser }) => {
   const [form] = Form.useForm();
@@ -52,6 +65,10 @@ const Payments = React.memo(({ addPayment, selectedUser }) => {
     setPayments([...payments, newPayment]);
     addPayment(newPayment);
     form.resetFields();
+  };
+  const handleDelete = (key) => {
+    const newPayments = payments.filter((item) => item.key !== key);
+    setPayments(newPayments);
   };
 
   return (
@@ -115,7 +132,7 @@ const Payments = React.memo(({ addPayment, selectedUser }) => {
       </Form>
       <Table
         dataSource={payments}
-        columns={columns()}
+        columns={columns(handleDelete)}
         rowKey="key"
         scroll={{ x: true }}
       />

@@ -1,19 +1,16 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Layout,
   Row,
   Col,
-  Card,
   Button,
   Select,
   Form,
-  InputNumber,
   Modal,
   Switch,
   DatePicker,
   Tabs,
   Alert,
-  Typography,
 } from "antd";
 import { createClient } from "@supabase/supabase-js";
 import DailyBalance from "./DailyBalance";
@@ -22,14 +19,15 @@ import Payments from "./Payments";
 import Sales from "./Sales";
 import Withdrawals from "./Withdrawals";
 import TransactionTable from "./TransactionTable";
-import LineChartComponent from "./LineChartComponent";
+import TotalsCard from "./TotalsCard";
+import ClosingBalanceForm from "./ClosingBalanceForm";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { formatDateToUTC, formatNumber } from "../utils/formatNumber";
 import Item from "antd/es/list/Item";
+import LineChartComponent from "./LineChartComponent";
 
 const { Content, Footer } = Layout;
-const { Option } = Select;
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey = process.env.REACT_APP_SUPABASE_KEY;
@@ -53,6 +51,9 @@ const MainScreen = ({ user }) => {
   const [manualDateEnabled, setManualDateEnabled] = useState(false);
   const [selectedDate, setSelectedDate] = useState(currentDate);
   const [missingDates, setMissingDates] = useState([]);
+  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [closingBalances, setClosingBalances] = useState({ usd: 0, lbp: 0 });
+  const [difference, setDifference] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -228,6 +229,31 @@ const MainScreen = ({ user }) => {
     });
   }, [credits, payments, sales, withdrawals, openingBalances]);
 
+  const calculateTotalInUSD = useCallback(
+    (usd, lbp) => usd + lbp / exchangeRate,
+    [exchangeRate]
+  );
+
+  const handleConfirm = useCallback(() => {
+    setIsConfirmed(true);
+  }, []);
+
+  const handleClosingBalancesChange = useCallback(
+    (updatedBalances) => {
+      setClosingBalances(updatedBalances);
+      const closingTotalUSD = calculateTotalInUSD(
+        updatedBalances.usd,
+        updatedBalances.lbp
+      );
+      const withdrawalsTotalUSD = calculateTotalInUSD(
+        totals.afterWithdrawals.usd,
+        totals.afterWithdrawals.lbp
+      );
+      setDifference(Math.abs(closingTotalUSD - withdrawalsTotalUSD));
+    },
+    [calculateTotalInUSD, totals]
+  );
+
   const handleSubmit = useCallback(async () => {
     if (!selectedUser) {
       toast.error("Please select an employee to close the day.");
@@ -241,7 +267,7 @@ const MainScreen = ({ user }) => {
   }, [selectedUser, sales, withdrawals]);
 
   const handleConfirmSubmit = useCallback(async () => {
-    const { usd: closing_usd, lbp: closing_lbp } = totals.afterWithdrawals;
+    const { usd: closing_usd, lbp: closing_lbp } = closingBalances;
     const date = manualDateEnabled
       ? formatDateToUTC(selectedDate)
       : formatDateToUTC(currentDate);
@@ -329,18 +355,11 @@ const MainScreen = ({ user }) => {
     payments,
     sales,
     withdrawals,
-    totals,
+    closingBalances,
     manualDateEnabled,
     selectedDate,
     currentDate,
   ]);
-
-  const calculateTotalInUSD = useCallback(
-    (usd, lbp) => {
-      return usd + lbp / exchangeRate;
-    },
-    [exchangeRate]
-  );
 
   const handleSwitchChange = useCallback(async (checked) => {
     setManualDateEnabled(checked);
@@ -388,136 +407,80 @@ const MainScreen = ({ user }) => {
                   <DailyBalance
                     date={currentDate}
                     openingBalances={openingBalances}
+                    onConfirm={handleConfirm}
                   />
                 </Col>
               </Row>
-              <Row gutter={16} style={{ marginTop: "20px" }}>
-                <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
-                  <Credits addCredit={addCredit} selectedUser={selectedUser} />
-                </Col>
-                <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
-                  <Payments
-                    addPayment={addPayment}
-                    selectedUser={selectedUser}
-                  />
-                </Col>
-              </Row>
-              <Row gutter={16} style={{ marginTop: "20px" }}>
-                <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
-                  <Sales addSale={addSale} selectedUser={selectedUser} />
-                </Col>
-                <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
-                  <Withdrawals
-                    addWithdrawal={addWithdrawal}
-                    selectedUser={selectedUser}
-                  />
-                </Col>
-              </Row>
-              <Row gutter={16}>
-                <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
-                  <Card title="Totals Before Withdrawals">
-                    <Typography.Title level={5}>
-                      USD: {totals.beforeWithdrawals.usd.toLocaleString()}
-                    </Typography.Title>
-                    <Typography.Title level={5}>
-                      LBP: {totals.beforeWithdrawals.lbp.toLocaleString()}
-                    </Typography.Title>
-                    <Form.Item
-                      label="Exchange Rate"
-                      style={{ marginTop: "10px" }}
-                    >
-                      <InputNumber
-                        prefix="LBP"
-                        formatter={(value) => formatNumber(value)}
-                        defaultValue={formatNumber(exchangeRate)}
-                        onChange={(value) => setExchangeRate(value)}
-                        style={{ width: "100%" }}
+              {isConfirmed && (
+                <>
+                  <Row gutter={16} style={{ marginTop: "20px" }}>
+                    <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
+                      <Credits
+                        addCredit={addCredit}
+                        selectedUser={selectedUser}
                       />
-                    </Form.Item>
-                    <Typography.Title level={5}>
-                      Total in USD:{" "}
-                      {calculateTotalInUSD(
-                        totals.beforeWithdrawals.usd,
-                        totals.beforeWithdrawals.lbp
-                      ).toLocaleString()}
-                    </Typography.Title>
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
-                  <Card title="Totals After Withdrawals">
-                    <Typography.Title level={5}>
-                      USD: {totals.afterWithdrawals.usd.toLocaleString()}
-                    </Typography.Title>
-                    <Typography.Title level={5}>
-                      LBP: {totals.afterWithdrawals.lbp.toLocaleString()}
-                    </Typography.Title>
-                    <Typography.Title level={5}>
-                      Total in USD:{" "}
-                      {calculateTotalInUSD(
-                        totals.afterWithdrawals.usd,
-                        totals.afterWithdrawals.lbp
-                      ).toLocaleString()}
-                    </Typography.Title>
-                  </Card>
-                </Col>
-              </Row>
-              <Row
-                gutter={16}
-                style={{ marginTop: "20px", textAlign: "center" }}
-              >
-                <Col xs={24} span={24}>
-                  <Form>
-                    <Form.Item
-                      name="closing_employee"
-                      label="Select Closing Employee"
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please select an employee!",
-                        },
-                      ]}
-                    >
-                      <Select
-                        placeholder="Select an employee"
-                        onChange={(value) => setSelectedUser(value)}
-                      >
-                        {users.map((user) => (
-                          <Option key={user.id} value={user.id}>
-                            {user.name}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                    {manualDateEnabled && (
-                      <Form.Item
-                        name="closing_date"
-                        label="Select Closing Date"
-                        rules={[
-                          { required: true, message: "Please select a date!" },
-                        ]}
-                      >
-                        <DatePicker
-                          showNow
-                          format="YYYY-MM-DD"
-                          disabledDate={(date) =>
-                            missingDates.some(
-                              (d) =>
-                                d.toISOString().split("T")[0] ===
-                                date.format("YYYY-MM-DD")
-                            )
-                          }
-                          onChange={(date) => setSelectedDate(date)}
-                        />
-                      </Form.Item>
-                    )}
-                    <Form.Item>
-                      <Button type="primary" onClick={handleSubmit}>
-                        Close Today
-                      </Button>
-                    </Form.Item>
-                  </Form>
-                </Col>
-              </Row>
+                    </Col>
+                    <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
+                      <Payments
+                        addPayment={addPayment}
+                        selectedUser={selectedUser}
+                      />
+                    </Col>
+                  </Row>
+                  <Row gutter={16} style={{ marginTop: "20px" }}>
+                    <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
+                      <Sales addSale={addSale} selectedUser={selectedUser} />
+                    </Col>
+                    <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
+                      <Withdrawals
+                        addWithdrawal={addWithdrawal}
+                        selectedUser={selectedUser}
+                      />
+                    </Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
+                      <TotalsCard
+                        title="Totals Before Withdrawals"
+                        totals={totals.beforeWithdrawals}
+                        exchangeRate={exchangeRate}
+                        setExchangeRate={setExchangeRate}
+                        calculateTotalInUSD={calculateTotalInUSD}
+                      />
+                    </Col>
+                    <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
+                      <TotalsCard
+                        title="Totals After Withdrawals"
+                        totals={totals.afterWithdrawals}
+                        exchangeRate={exchangeRate}
+                        setExchangeRate={setExchangeRate}
+                        calculateTotalInUSD={calculateTotalInUSD}
+                        difference={difference}
+                      />
+                    </Col>
+                  </Row>
+                  <Row
+                    gutter={16}
+                    style={{ marginTop: "20px", textAlign: "center" }}
+                  >
+                    <Col xs={24} span={24} type="flex" align="middle">
+                      <ClosingBalanceForm
+                        closingBalances={closingBalances}
+                        setClosingBalances={handleClosingBalancesChange}
+                        exchangeRate={exchangeRate}
+                        title="Confirm Closing"
+                        difference={difference}
+                        users={users}
+                        setSelectedUser={setSelectedUser}
+                        manualDateEnabled={manualDateEnabled}
+                        missingDates={missingDates}
+                        setSelectedDate={setSelectedDate}
+                        handleSubmit={handleSubmit}
+                      />
+                    </Col>
+                  </Row>
+                </>
+              )}
               <Modal
                 title="Confirm Closing"
                 open={isModalVisible}
@@ -551,7 +514,6 @@ const MainScreen = ({ user }) => {
                   selectedUser={selectedUser}
                   openingBalance={openingBalances}
                 />
-                {/* <LineChartComponent /> */}
               </div>
             </Item>
           )}

@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useMemo } from "react";
+// src/components/LineChartComponent.js
+import React, { useEffect, useState } from "react";
 import {
   LineChart,
   Line,
@@ -17,20 +18,21 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const LineChartComponent = () => {
   const [data, setData] = useState([]);
+
   useEffect(() => {
-    const fetchTransactions = async () => {
+    async function fetchTransactions() {
       const { data: credits, error: creditError } = await supabase
         .from("credits")
-        .select("date, amount_usd, amount_lbp");
+        .select("date, amount_usd");
       const { data: payments, error: paymentError } = await supabase
         .from("payments")
-        .select("date, amount_usd, amount_lbp");
+        .select("date, amount_usd");
       const { data: sales, error: salesError } = await supabase
         .from("sales")
-        .select("date, amount_usd, amount_lbp");
+        .select("date, amount_usd");
       const { data: withdrawals, error: withdrawalsError } = await supabase
         .from("withdrawals")
-        .select("date, amount_usd, amount_lbp");
+        .select("date, amount_usd");
 
       if (creditError || paymentError || salesError || withdrawalsError) {
         console.error(
@@ -61,6 +63,7 @@ const LineChartComponent = () => {
           })),
         ];
 
+        // Group by date
         const groupedData = combinedData.reduce((acc, item) => {
           const date = item.date;
           if (!acc[date])
@@ -69,34 +72,36 @@ const LineChartComponent = () => {
           return acc;
         }, {});
 
+        // Convert to array
         setData(Object.values(groupedData));
       }
-    };
+    }
 
     fetchTransactions();
   }, []);
 
-  const memoizedData = useMemo(() => data, [data]);
-
   return (
-    <ResponsiveContainer width="100%">
-      <LineChart data={memoizedData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="date" />
-        <YAxis />
-        <Tooltip />
-        <Legend />
-        <Line type="monotone" dataKey="Credit" stroke="#82ca9d" />
-        <Line type="monotone" dataKey="Payment" stroke="#8884d8" />
-        <Line type="monotone" dataKey="Sale" stroke="#ffc658" />
-        <Line
-          type="monotone"
-          dataKey="Withdrawal"
-          name="Withdrawal"
-          stroke="#ff7300"
-        />
-      </LineChart>
-    </ResponsiveContainer>
+    <>
+      test
+      <ResponsiveContainer width="100%">
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="date" />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          <Line type="monotone" dataKey="Credit" stroke="#82ca9d" />
+          <Line type="monotone" dataKey="Payment" stroke="#8884d8" />
+          <Line type="monotone" dataKey="Sale" stroke="#ffc658" />
+          <Line
+            type="monotone"
+            dataKey="Withdrawal"
+            name="Daniel"
+            stroke="#ff7300"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </>
   );
 };
 

@@ -1,8 +1,8 @@
 import React from "react";
-import { Card, Table, Button, InputNumber, Form } from "antd";
+import { Card, Table, Button, InputNumber, Form, Popconfirm } from "antd";
 import { formatNumber } from "../utils/formatNumber";
 
-const columns = () => [
+const columns = (handleDelete) => [
   {
     title: "Amount USD",
     dataIndex: "amount_usd",
@@ -14,7 +14,19 @@ const columns = () => [
     dataIndex: "amount_lbp",
     key: "amount_lbp",
     render: (text) => formatNumber(text),
-  }
+  },
+  {
+    title: "Action",
+    key: "action",
+    render: (text, record) => (
+      <Popconfirm
+        title="Sure to delete?"
+        onConfirm={() => handleDelete(record.key)}
+      >
+        <Button type="link">Delete</Button>
+      </Popconfirm>
+    ),
+  },
 ];
 
 const Withdrawals = React.memo(({ addWithdrawal, selectedUser, onDelete }) => {
@@ -23,7 +35,9 @@ const Withdrawals = React.memo(({ addWithdrawal, selectedUser, onDelete }) => {
 
   const onFinish = (values) => {
     // const newWithdrawal = { ...values, user_id: selectedUser };
-    const key = withdrawals.length ? withdrawals[withdrawals.length - 1].key + 1 : 0;
+    const key = withdrawals.length
+      ? withdrawals[withdrawals.length - 1].key + 1
+      : 0;
     const newWithdrawal = { ...values, key, user_id: selectedUser };
 
     setWithdrawals([newWithdrawal]);
@@ -31,11 +45,9 @@ const Withdrawals = React.memo(({ addWithdrawal, selectedUser, onDelete }) => {
     form.resetFields();
   };
 
-  const handleDelete = () => {
-    setWithdrawals([]);
-    if (onDelete) {
-      onDelete([]);
-    }
+  const handleDelete = (key) => {
+    const newWithdrawals = withdrawals.filter((item) => item.key !== key);
+    setWithdrawals(newWithdrawals);
   };
 
   return (
@@ -71,7 +83,7 @@ const Withdrawals = React.memo(({ addWithdrawal, selectedUser, onDelete }) => {
       </Form>
       <Table
         dataSource={withdrawals}
-        columns={columns()}
+        columns={columns(handleDelete)}
         rowKey="user_id"
         pagination={false}
         onRow={(record, rowIndex) => {

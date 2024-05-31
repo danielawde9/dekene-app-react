@@ -1,26 +1,16 @@
 # todo
-first in the main screen if the payment type is the withdrawals it should not be included in the calculation, second if i deleted an item it will not re render the calcualtion 
 
-add loading
-fix auth screen layout
-add login google 
+second if i deleted an item it will not re render the calcualtion
 
 rename stuff
 
+paid credit to fill it out non paid
 
+and the closing - daniel to be less than 2 $ ok to close
 
-add ok for opening the sandou2 
-show the daily closing 
+Warning: [antd: Tabs] `Tabs.TabPane` is deprecated. Please use `items` instead.
 
-
-paid credit to fill it out 
-
-
-another input for the closing which will go the closing for the next day instead of the calculation, 
-
-and the closing - daniel to be less than 2 $ ok to close 
 ## Pass
 
-supa base 
-4Y3$3U9a%UZ%!*
-
+supa base
+4Y3$3U9a%UZ%!\*

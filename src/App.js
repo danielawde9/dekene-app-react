@@ -5,8 +5,7 @@ import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import MainScreen from "./components/MainScreen";
 import "./App.css";
-import { Flex, Layout } from "antd";
-import { Content } from "antd/es/layout/layout";
+import { Card, Flex, Layout } from "antd";
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey = process.env.REACT_APP_SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -50,13 +49,25 @@ const App = () => {
   if (!session || !user) {
     return (
       <Layout className="layout">
-        <Flex vertical style={{ padding: "0 50px" }}>
-          <Auth
-            supabaseClient={supabase}
-            appearance={{ theme: ThemeSupa }}
-            providers={["google"]}
-            showLinks={false}
-          />
+        <Flex
+          vertical
+          align="center"
+          justify="center"
+          style={{ height: "100vh" }}
+        >
+          <Card style={{ maxWidth: 500, width: 500 }}>
+            <Flex vertical style={{ padding: "0 50px" }}>
+              <Flex align="center" justify="center">
+                <img alt="logo" src="./assets/logo.png" />
+              </Flex>
+              <Auth
+                supabaseClient={supabase}
+                appearance={{ theme: ThemeSupa }}
+                providers={["google"]}
+                showLinks={false}
+              />
+            </Flex>
+          </Card>
         </Flex>
       </Layout>
     );

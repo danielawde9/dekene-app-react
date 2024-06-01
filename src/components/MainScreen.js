@@ -11,6 +11,8 @@ import {
   DatePicker,
   Tabs,
   Alert,
+  Divider,
+  Typography,
 } from "antd";
 import { createClient } from "@supabase/supabase-js";
 import DailyBalance from "./DailyBalance";
@@ -240,7 +242,6 @@ const MainScreen = ({ user }) => {
       lbp: prev.lbp + amountLBP,
     }));
   };
-  
 
   const handleClosingBalancesChange = useCallback(
     (updatedBalances) => {
@@ -519,7 +520,8 @@ const MainScreen = ({ user }) => {
                     unCheckedChildren="Auto Date"
                   />
                 </div>
-                <h3>Transaction Table</h3>
+                <Divider />
+                <Typography.Title level={3}>Transaction Table</Typography.Title>
                 <TransactionTable
                   selectedUser={selectedUser}
                   openingBalance={openingBalances}

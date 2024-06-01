@@ -1,6 +1,22 @@
-import React from "react";
-import { Card, Table, Button, Input, InputNumber, Form, Popconfirm } from "antd";
+import React, { useEffect, useState } from "react";
+import {
+  Card,
+  Table,
+  Button,
+  Input,
+  InputNumber,
+  Form,
+  Popconfirm,
+  Select,
+} from "antd";
 import { formatNumber } from "../utils/formatNumber";
+import { createClient } from "@supabase/supabase-js";
+
+const { Option } = Select;
+
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+const supabaseKey = process.env.REACT_APP_SUPABASE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const columns = (handleDelete, handlePay) => [
   {
@@ -47,77 +63,152 @@ const columns = (handleDelete, handlePay) => [
   },
 ];
 
-const Credits = React.memo(({ addCredit, selectedUser, updateClosingBalance }) => {
-  const [form] = Form.useForm();
-  const [credits, setCredits] = React.useState([]);
+const Credits = React.memo(
+  ({ addCredit, selectedUser, updateClosingBalance }) => {
+    const [form] = Form.useForm();
+    const [credits, setCredits] = useState([]);
+    const [unpaidCredits, setUnpaidCredits] = useState([]);
+    const [selectedCredit, setSelectedCredit] = useState(null);
 
-  const onFinish = (values) => {
-    const key = credits.length ? credits[credits.length - 1].key + 1 : 0;
-    const newCredit = { ...values, key, is_paid: false, user_id: selectedUser };
-    setCredits([...credits, newCredit]);
-    addCredit(newCredit);
-    form.resetFields();
-  };
+    useEffect(() => {
+      const fetchUnpaidCredits = async () => {
+        const { data, error } = await supabase
+          .from("credits")
+          .select("*")
+          .eq("is_paid", false);
+        if (error) {
+          console.error("Error fetching unpaid credits:", error);
+        } else {
+          setUnpaidCredits(data);
+        }
+      };
 
-  const handleDelete = (key) => {
-    const newCredits = credits.filter((item) => item.key !== key);
-    setCredits(newCredits);
-  };
+      fetchUnpaidCredits();
+    }, []);
 
-  const handlePay = (key) => {
-    const updatedCredits = credits.map((credit) =>
-      credit.key === key ? { ...credit, is_paid: true } : credit
-    );
-    setCredits(updatedCredits);
-    const paidCredit = credits.find((credit) => credit.key === key);
-    updateClosingBalance(paidCredit.amount_usd, paidCredit.amount_lbp);
-  };
+    const onFinish = (values) => {
+      const key = credits.length ? credits[credits.length - 1].key + 1 : 0;
+      const newCredit = {
+        ...values,
+        key,
+        is_paid: false,
+        user_id: selectedUser,
+      };
+      setCredits([...credits, newCredit]);
+      addCredit(newCredit);
+      form.resetFields();
+    };
 
-  return (
-    <Card title="Credits">
-      <Form form={form} onFinish={onFinish}>
-        <Form.Item
-          name="amount_usd"
-          label="Amount USD"
-          rules={[{ required: true, message: "Please input amount in USD!" }]}
+    const handleDelete = (key) => {
+      const newCredits = credits.filter((item) => item.key !== key);
+      setCredits(newCredits);
+    };
+
+    const handlePay = (key) => {
+      const updatedCredits = credits.map((credit) =>
+        credit.key === key ? { ...credit, is_paid: true } : credit
+      );
+      setCredits(updatedCredits);
+      const paidCredit = credits.find((credit) => credit.key === key);
+      updateClosingBalance(paidCredit.amount_usd, paidCredit.amount_lbp);
+    };
+
+    const handleSelectCredit = (value) => {
+      setSelectedCredit(value);
+    };
+
+    const handleAddSelectedCredit = () => {
+      const creditToPay = unpaidCredits.find(
+        (credit) => credit.id === selectedCredit
+      );
+      if (creditToPay) {
+        const key = credits.length ? credits[credits.length - 1].key + 1 : 0;
+        const newCredit = {
+          ...creditToPay,
+          key,
+          is_paid: true,
+          user_id: selectedUser,
+        };
+        setCredits([...credits, newCredit]);
+        updateClosingBalance(newCredit.amount_usd, newCredit.amount_lbp);
+        setUnpaidCredits(
+          unpaidCredits.filter((credit) => credit.id !== selectedCredit)
+        );
+        setSelectedCredit(null);
+      }
+    };
+
+    return (
+      <Card title="Credits">
+        <Form form={form} onFinish={onFinish}>
+          <Form.Item
+            name="amount_usd"
+            label="Amount USD"
+            rules={[{ required: true, message: "Please input amount in USD!" }]}
+          >
+            <InputNumber
+              formatter={(value) => formatNumber(value)}
+              parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+              style={{ width: "100%" }}
+            />
+          </Form.Item>
+          <Form.Item
+            name="amount_lbp"
+            label="Amount LBP"
+            rules={[{ required: true, message: "Please input amount in LBP!" }]}
+          >
+            <InputNumber
+              formatter={(value) => formatNumber(value)}
+              parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+              style={{ width: "100%" }}
+            />
+          </Form.Item>
+          <Form.Item
+            name="person"
+            label="Person"
+            rules={[{ required: true, message: "Please input the person!" }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit">
+              Add Credit
+            </Button>
+          </Form.Item>
+        </Form>
+        <Card
+          title="Unpaid Credits"
+          style={{ marginTop: 20, marginBottom: 20 }}
         >
-          <InputNumber
-            formatter={(value) => formatNumber(value)}
-            parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
-            style={{ width: "100%" }}
-          />
-        </Form.Item>
-        <Form.Item
-          name="amount_lbp"
-          label="Amount LBP"
-          rules={[{ required: true, message: "Please input amount in LBP!" }]}
-        >
-          <InputNumber
-            formatter={(value) => formatNumber(value)}
-            parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
-            style={{ width: "100%" }}
-          />
-        </Form.Item>
-        <Form.Item
-          name="person"
-          label="Person"
-          rules={[{ required: true, message: "Please input the person!" }]}
-        >
-          <Input />
-        </Form.Item>
-        <Form.Item>
-          <Button type="primary" htmlType="submit">
-            Add Credit
+          <Select
+            placeholder="Select unpaid credit"
+            style={{ width: "100%", marginBottom: 10 }}
+            value={selectedCredit}
+            onChange={handleSelectCredit}
+          >
+            {unpaidCredits.map((credit) => (
+              <Option key={credit.id} value={credit.id}>
+                {credit.person} - {formatNumber(credit.amount_usd)} USD /{" "}
+                {formatNumber(credit.amount_lbp)} LBP
+              </Option>
+            ))}
+          </Select>
+          <Button
+            type="primary"
+            onClick={handleAddSelectedCredit}
+            disabled={!selectedCredit}
+          >
+            Add Selected Credit
           </Button>
-        </Form.Item>
-      </Form>
-      <Table
-        dataSource={credits}
-        columns={columns(handleDelete, handlePay)}
-        rowKey="key"
-      />
-    </Card>
-  );
-});
+        </Card>
+        <Table
+          dataSource={credits}
+          columns={columns(handleDelete, handlePay)}
+          rowKey="key"
+        />
+      </Card>
+    );
+  }
+);
 
 export default Credits;

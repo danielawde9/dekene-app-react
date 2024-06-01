@@ -121,7 +121,7 @@ const Payments = React.memo(({ addPayment, selectedUser }) => {
         >
           <Select placeholder="Select deduction source">
             <Option value="current">Current Closing</Option>
-            <Option value="withdrawals">Withdrawals</Option>
+            <Option value="daniel">Daniel</Option>
           </Select>
         </Form.Item>
         <Form.Item>

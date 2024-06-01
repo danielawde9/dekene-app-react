@@ -30,14 +30,14 @@ const LineChartComponent = () => {
       const { data: sales, error: salesError } = await supabase
         .from("sales")
         .select("date, amount_usd");
-      const { data: withdrawals, error: withdrawalsError } = await supabase
-        .from("withdrawals")
+      const { data: daniel, error: danielError } = await supabase
+        .from("daniel")
         .select("date, amount_usd");
 
-      if (creditError || paymentError || salesError || withdrawalsError) {
+      if (creditError || paymentError || salesError || danielError) {
         console.error(
           "Error fetching transactions:",
-          creditError || paymentError || salesError || withdrawalsError
+          creditError || paymentError || salesError || danielError
         );
       } else {
         const combinedData = [
@@ -56,7 +56,7 @@ const LineChartComponent = () => {
             type: "Sale",
             amount: item.amount_usd,
           })),
-          ...withdrawals.map((item) => ({
+          ...daniel.map((item) => ({
             date: item.date,
             type: "Withdrawal",
             amount: item.amount_usd,

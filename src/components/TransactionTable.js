@@ -31,22 +31,22 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
       const { data: payments, error: paymentError } = await supabase
         .from("payments")
         .select("*")
-        .eq("deduction_source", "withdrawals");
-      const { data: withdrawals, error: withdrawalsError } = await supabase
-        .from("withdrawals")
+        .eq("deduction_source", "daniel");
+      const { data: daniel, error: danielError } = await supabase
+        .from("daniel")
         .select("*");
 
-      if (paymentError || withdrawalsError) {
+      if (paymentError || danielError) {
         console.error(
           "Error fetching transactions:",
-          paymentError || withdrawalsError
+          paymentError || danielError
         );
         return;
       }
 
       const transactions = [
         ...payments.map((item) => ({ ...item, type: "Payment" })),
-        ...withdrawals.map((item) => ({ ...item, type: "Withdrawal" })),
+        ...daniel.map((item) => ({ ...item, type: "Daniel" })),
       ];
 
       transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -54,11 +54,11 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
       setTransactions(transactions);
 
       // Calculate balance
-      const totalWithdrawalsUSD = withdrawals.reduce(
+      const totalDanielUSD = daniel.reduce(
         (acc, item) => acc + item.amount_usd,
         0
       );
-      const totalWithdrawalsLBP = withdrawals.reduce(
+      const totalDanielLBP = daniel.reduce(
         (acc, item) => acc + item.amount_lbp,
         0
       );
@@ -72,8 +72,8 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
       );
 
       setBalance({
-        usd: totalWithdrawalsUSD - totalPaymentsUSD,
-        lbp: totalWithdrawalsLBP - totalPaymentsLBP,
+        usd: totalDanielUSD - totalPaymentsUSD,
+        lbp: totalDanielLBP - totalPaymentsLBP,
       });
 
       setIsLoading(false);
@@ -111,7 +111,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
         setTransactions([transaction, ...transactions]);
         toast.success("Transaction added successfully!");
         // Recalculate balance
-        if (type === "Payment" && values.deduction_source === "withdrawals") {
+        if (type === "Payment" && values.deduction_source === "daniel") {
           setBalance((prevBalance) => ({
             usd: prevBalance.usd - values.amount_usd,
             lbp: prevBalance.lbp - values.amount_lbp,
@@ -220,7 +220,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
           form={form}
           onFinish={(values) =>
             addTransaction(
-              { ...values, deduction_source: "withdrawals" },
+              { ...values, deduction_source: "daniel" },
               "Payment"
             )
           }

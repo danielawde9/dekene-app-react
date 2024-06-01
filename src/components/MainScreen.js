@@ -17,7 +17,7 @@ import DailyBalance from "./DailyBalance";
 import Credits from "./Credits";
 import Payments from "./Payments";
 import Sales from "./Sales";
-import Withdrawals from "./Withdrawals";
+import Daniel from "./Daniel";
 import TransactionTable from "./TransactionTable";
 import TotalsCard from "./TotalsCard";
 import ClosingBalanceForm from "./ClosingBalanceForm";
@@ -39,10 +39,10 @@ const MainScreen = ({ user }) => {
   const [credits, setCredits] = useState([]);
   const [payments, setPayments] = useState([]);
   const [sales, setSales] = useState([]);
-  const [withdrawals, setWithdrawals] = useState([]);
+  const [daniel, setDaniel] = useState([]);
   const [totals, setTotals] = useState({
-    beforeWithdrawals: { usd: 0, lbp: 0 },
-    afterWithdrawals: { usd: 0, lbp: 0 },
+    beforeDaniel: { usd: 0, lbp: 0 },
+    afterDaniel: { usd: 0, lbp: 0 },
   });
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -140,11 +140,11 @@ const MainScreen = ({ user }) => {
 
   useEffect(() => {
     calculateTotals();
-  }, [credits, payments, sales, withdrawals]);
+  }, [credits, payments, sales, daniel]);
 
   const handleTransactionChange = useCallback(() => {
     calculateTotals();
-  }, [credits, payments, sales, withdrawals]);
+  }, [credits, payments, sales, daniel]);
 
   const addCredit = useCallback(
     (credit) => {
@@ -172,10 +172,10 @@ const MainScreen = ({ user }) => {
 
   const addWithdrawal = useCallback(
     (withdrawal) => {
-      setWithdrawals([...withdrawals, withdrawal]);
+      setDaniel([...daniel, withdrawal]);
       handleTransactionChange();
     },
-    [withdrawals, handleTransactionChange]
+    [daniel, handleTransactionChange]
   );
 
   const calculateTotals = useCallback(() => {
@@ -189,45 +189,41 @@ const MainScreen = ({ user }) => {
     );
     const totalPaymentsUSD = payments.reduce(
       (acc, payment) =>
-        payment.deduction_source !== "withdrawals"
-          ? acc + payment.amount_usd
-          : acc,
+        payment.deduction_source !== "daniel" ? acc + payment.amount_usd : acc,
       0
     );
     const totalPaymentsLBP = payments.reduce(
       (acc, payment) =>
-        payment.deduction_source !== "withdrawals"
-          ? acc + payment.amount_lbp
-          : acc,
+        payment.deduction_source !== "daniel" ? acc + payment.amount_lbp : acc,
       0
     );
     const totalSalesUSD = sales.reduce((acc, sale) => acc + sale.amount_usd, 0);
     const totalSalesLBP = sales.reduce((acc, sale) => acc + sale.amount_lbp, 0);
-    const totalWithdrawalsUSD = withdrawals.reduce(
+    const totalDanielUSD = daniel.reduce(
       (acc, withdrawal) => acc + withdrawal.amount_usd,
       0
     );
-    const totalWithdrawalsLBP = withdrawals.reduce(
+    const totalDanielLBP = daniel.reduce(
       (acc, withdrawal) => acc + withdrawal.amount_lbp,
       0
     );
 
-    const beforeWithdrawalsUSD =
+    const beforeDanielUSD =
       openingBalances.usd - totalCreditsUSD - totalPaymentsUSD + totalSalesUSD;
-    const beforeWithdrawalsLBP =
+    const beforeDanielLBP =
       openingBalances.lbp - totalCreditsLBP - totalPaymentsLBP + totalSalesLBP;
 
-    const afterWithdrawalsUSD = beforeWithdrawalsUSD - totalWithdrawalsUSD;
-    const afterWithdrawalsLBP = beforeWithdrawalsLBP - totalWithdrawalsLBP;
+    const afterDanielUSD = beforeDanielUSD - totalDanielUSD;
+    const afterDanielLBP = beforeDanielLBP - totalDanielLBP;
 
     setTotals({
-      beforeWithdrawals: {
-        usd: beforeWithdrawalsUSD,
-        lbp: beforeWithdrawalsLBP,
+      beforeDaniel: {
+        usd: beforeDanielUSD,
+        lbp: beforeDanielLBP,
       },
-      afterWithdrawals: { usd: afterWithdrawalsUSD, lbp: afterWithdrawalsLBP },
+      afterDaniel: { usd: afterDanielUSD, lbp: afterDanielLBP },
     });
-  }, [credits, payments, sales, withdrawals, openingBalances]);
+  }, [credits, payments, sales, daniel, openingBalances]);
 
   const calculateTotalInUSD = useCallback(
     (usd, lbp) => usd + lbp / exchangeRate,
@@ -238,18 +234,31 @@ const MainScreen = ({ user }) => {
     setIsConfirmed(true);
   }, []);
 
+  const updateClosingBalance = (amountUSD, amountLBP) => {
+    setClosingBalances((prev) => ({
+      usd: prev.usd + amountUSD,
+      lbp: prev.lbp + amountLBP,
+    }));
+  };
+  
+
   const handleClosingBalancesChange = useCallback(
     (updatedBalances) => {
-      setClosingBalances(updatedBalances);
-      const closingTotalUSD = calculateTotalInUSD(
-        updatedBalances.usd,
-        updatedBalances.lbp
-      );
-      const withdrawalsTotalUSD = calculateTotalInUSD(
-        totals.afterWithdrawals.usd,
-        totals.afterWithdrawals.lbp
-      );
-      setDifference(Math.abs(closingTotalUSD - withdrawalsTotalUSD));
+      const { usd, lbp } = updatedBalances;
+      if (
+        usd !== undefined &&
+        lbp !== undefined &&
+        !isNaN(usd) &&
+        !isNaN(lbp)
+      ) {
+        setClosingBalances(updatedBalances);
+        const closingTotalUSD = calculateTotalInUSD(usd, lbp);
+        const danielTotalUSD = calculateTotalInUSD(
+          totals.afterDaniel.usd,
+          totals.afterDaniel.lbp
+        );
+        setDifference(Math.abs(closingTotalUSD - danielTotalUSD));
+      }
     },
     [calculateTotalInUSD, totals]
   );
@@ -259,12 +268,12 @@ const MainScreen = ({ user }) => {
       toast.error("Please select an employee to close the day.");
       return;
     }
-    if (sales.length === 0 || withdrawals.length === 0) {
+    if (sales.length === 0 || daniel.length === 0) {
       toast.error("Please enter at least one sale and one withdrawal.");
       return;
     }
     setIsModalVisible(true);
-  }, [selectedUser, sales, withdrawals]);
+  }, [selectedUser, sales, daniel]);
 
   const handleConfirmSubmit = useCallback(async () => {
     const { usd: closing_usd, lbp: closing_lbp } = closingBalances;
@@ -303,15 +312,15 @@ const MainScreen = ({ user }) => {
             ...payment,
             date,
             user_id: selectedUser,
-            deduction_source: "withdrawals",
+            deduction_source: "daniel",
           },
         ]);
         if (paymentError) throw paymentError;
 
         // Update withdrawal if necessary
-        if (payment.deduction_source === "withdrawals") {
+        if (payment.deduction_source === "daniel") {
           const { error: withdrawalUpdateError } = await supabase
-            .from("withdrawals")
+            .from("daniel")
             .update({
               amount_usd: payment.amount_usd,
               amount_lbp: payment.amount_lbp,
@@ -329,10 +338,10 @@ const MainScreen = ({ user }) => {
         if (saleError) throw saleError;
       }
 
-      // Insert withdrawals
-      for (const withdrawal of withdrawals) {
+      // Insert daniel
+      for (const withdrawal of daniel) {
         const { error: withdrawalError } = await supabase
-          .from("withdrawals")
+          .from("daniel")
           .insert([{ ...withdrawal, date, user_id: selectedUser }]);
         if (withdrawalError) throw withdrawalError;
       }
@@ -342,7 +351,7 @@ const MainScreen = ({ user }) => {
       setCredits([]);
       setPayments([]);
       setSales([]);
-      setWithdrawals([]);
+      setDaniel([]);
       setOpeningBalances({ usd: closing_usd, lbp: closing_lbp });
       setIsModalVisible(false);
     } catch (error) {
@@ -354,7 +363,7 @@ const MainScreen = ({ user }) => {
     credits,
     payments,
     sales,
-    withdrawals,
+    daniel,
     closingBalances,
     manualDateEnabled,
     selectedDate,
@@ -418,6 +427,7 @@ const MainScreen = ({ user }) => {
                       <Credits
                         addCredit={addCredit}
                         selectedUser={selectedUser}
+                        updateClosingBalance={updateClosingBalance}
                       />
                     </Col>
                     <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
@@ -432,7 +442,7 @@ const MainScreen = ({ user }) => {
                       <Sales addSale={addSale} selectedUser={selectedUser} />
                     </Col>
                     <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
-                      <Withdrawals
+                      <Daniel
                         addWithdrawal={addWithdrawal}
                         selectedUser={selectedUser}
                       />
@@ -441,8 +451,8 @@ const MainScreen = ({ user }) => {
                   <Row gutter={16}>
                     <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
                       <TotalsCard
-                        title="Totals Before Withdrawals"
-                        totals={totals.beforeWithdrawals}
+                        title="Totals Before Daniel"
+                        totals={totals.beforeDaniel}
                         exchangeRate={exchangeRate}
                         setExchangeRate={setExchangeRate}
                         calculateTotalInUSD={calculateTotalInUSD}
@@ -450,8 +460,8 @@ const MainScreen = ({ user }) => {
                     </Col>
                     <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
                       <TotalsCard
-                        title="Totals After Withdrawals"
-                        totals={totals.afterWithdrawals}
+                        title="Totals After Daniel"
+                        totals={totals.afterDaniel}
                         exchangeRate={exchangeRate}
                         setExchangeRate={setExchangeRate}
                         calculateTotalInUSD={calculateTotalInUSD}
@@ -492,7 +502,7 @@ const MainScreen = ({ user }) => {
                 <p>Credits: {credits.length}</p>
                 <p>Payments: {payments.length}</p>
                 <p>Sales: {sales.length}</p>
-                <p>Withdrawals: {withdrawals.length}</p>
+                <p>Daniel: {daniel.length}</p>
               </Modal>
             </div>
           </Item>

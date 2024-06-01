@@ -1,16 +1,8 @@
 import React from "react";
-import {
-  Card,
-  Table,
-  Button,
-  Input,
-  InputNumber,
-  Form,
-  Popconfirm,
-} from "antd";
+import { Card, Table, Button, Input, InputNumber, Form, Popconfirm } from "antd";
 import { formatNumber } from "../utils/formatNumber";
 
-const columns = (handleDelete) => [
+const columns = (handleDelete, handlePay) => [
   {
     title: "Amount USD",
     dataIndex: "amount_usd",
@@ -29,26 +21,39 @@ const columns = (handleDelete) => [
     key: "person",
   },
   {
+    title: "Paid",
+    dataIndex: "is_paid",
+    key: "is_paid",
+    render: (text) => (text ? "Yes" : "No"),
+  },
+  {
     title: "Action",
     key: "action",
     render: (text, record) => (
-      <Popconfirm
-        title="Sure to delete?"
-        onConfirm={() => handleDelete(record.key)}
-      >
-        <Button type="link">Delete</Button>
-      </Popconfirm>
+      <>
+        <Popconfirm
+          title="Sure to delete?"
+          onConfirm={() => handleDelete(record.key)}
+        >
+          <Button type="link">Delete</Button>
+        </Popconfirm>
+        {!record.is_paid && (
+          <Button type="link" onClick={() => handlePay(record.key)}>
+            Pay
+          </Button>
+        )}
+      </>
     ),
   },
 ];
 
-const Credits = React.memo(({ addCredit, selectedUser }) => {
+const Credits = React.memo(({ addCredit, selectedUser, updateClosingBalance }) => {
   const [form] = Form.useForm();
   const [credits, setCredits] = React.useState([]);
 
   const onFinish = (values) => {
     const key = credits.length ? credits[credits.length - 1].key + 1 : 0;
-    const newCredit = { ...values, key, user_id: selectedUser };
+    const newCredit = { ...values, key, is_paid: false, user_id: selectedUser };
     setCredits([...credits, newCredit]);
     addCredit(newCredit);
     form.resetFields();
@@ -57,6 +62,15 @@ const Credits = React.memo(({ addCredit, selectedUser }) => {
   const handleDelete = (key) => {
     const newCredits = credits.filter((item) => item.key !== key);
     setCredits(newCredits);
+  };
+
+  const handlePay = (key) => {
+    const updatedCredits = credits.map((credit) =>
+      credit.key === key ? { ...credit, is_paid: true } : credit
+    );
+    setCredits(updatedCredits);
+    const paidCredit = credits.find((credit) => credit.key === key);
+    updateClosingBalance(paidCredit.amount_usd, paidCredit.amount_lbp);
   };
 
   return (
@@ -99,7 +113,7 @@ const Credits = React.memo(({ addCredit, selectedUser }) => {
       </Form>
       <Table
         dataSource={credits}
-        columns={columns(handleDelete)}
+        columns={columns(handleDelete, handlePay)}
         rowKey="key"
       />
     </Card>

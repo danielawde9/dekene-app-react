@@ -29,29 +29,27 @@ const columns = (handleDelete) => [
   },
 ];
 
-const Withdrawals = React.memo(({ addWithdrawal, selectedUser, onDelete }) => {
+const Daniel = React.memo(({ addWithdrawal, selectedUser, onDelete }) => {
   const [form] = Form.useForm();
-  const [withdrawals, setWithdrawals] = React.useState([]);
+  const [daniel, setDaniel] = React.useState([]);
 
   const onFinish = (values) => {
     // const newWithdrawal = { ...values, user_id: selectedUser };
-    const key = withdrawals.length
-      ? withdrawals[withdrawals.length - 1].key + 1
-      : 0;
+    const key = daniel.length ? daniel[daniel.length - 1].key + 1 : 0;
     const newWithdrawal = { ...values, key, user_id: selectedUser };
 
-    setWithdrawals([newWithdrawal]);
+    setDaniel([newWithdrawal]);
     addWithdrawal(newWithdrawal);
     form.resetFields();
   };
 
   const handleDelete = (key) => {
-    const newWithdrawals = withdrawals.filter((item) => item.key !== key);
-    setWithdrawals(newWithdrawals);
+    const newDaniel = daniel.filter((item) => item.key !== key);
+    setDaniel(newDaniel);
   };
 
   return (
-    <Card title="Withdrawals">
+    <Card title="Daniel">
       <Form form={form} onFinish={onFinish}>
         <Form.Item
           name="amount_usd"
@@ -82,7 +80,7 @@ const Withdrawals = React.memo(({ addWithdrawal, selectedUser, onDelete }) => {
         </Form.Item>
       </Form>
       <Table
-        dataSource={withdrawals}
+        dataSource={daniel}
         columns={columns(handleDelete)}
         rowKey="user_id"
         pagination={false}
@@ -96,4 +94,4 @@ const Withdrawals = React.memo(({ addWithdrawal, selectedUser, onDelete }) => {
   );
 });
 
-export default Withdrawals;
+export default Daniel;

@@ -29,18 +29,21 @@ const ClosingBalanceForm = ({
   handleSubmit,
 }) => {
   const calculateTotalInUSD = (usd, lbp) => usd + lbp / exchangeRate;
-
+  console.log(closingBalances,'com')
   return (
     <Flex vertical justify="center" align="center">
-      <Card title={title} style={{ marginTop: 20 }} style={{ maxWidth: 500 }}>
+      <Card title={title} style={{ marginTop: 20, maxWidth: 500 }}>
         <Form.Item label="Closing Balance USD">
           <InputNumber
             min={0}
-            formatter={(value) => formatNumber(value)}
+            // formatter={(value) => formatNumber(value)}
             value={closingBalances.usd}
-            onChange={(value) =>
-              setClosingBalances((prev) => ({ ...prev, usd: value }))
-            }
+            onChange={(value) => {
+              if (value !== undefined && !isNaN(value)) {
+                setClosingBalances((prev) => ({ ...prev, usd: value }));
+                console.log(closingBalances,'sasd')
+              }
+            }}
             style={{ width: "100%" }}
           />
         </Form.Item>
@@ -49,9 +52,11 @@ const ClosingBalanceForm = ({
             min={0}
             formatter={(value) => formatNumber(value)}
             value={closingBalances.lbp}
-            onChange={(value) =>
-              setClosingBalances((prev) => ({ ...prev, lbp: value }))
-            }
+            onChange={(value) => {
+              if (value !== undefined && !isNaN(value)) {
+                setClosingBalances((prev) => ({ ...prev, lbp: value }));
+              }
+            }}
             style={{ width: "100%" }}
           />
         </Form.Item>
@@ -64,7 +69,12 @@ const ClosingBalanceForm = ({
         </Typography.Text>
 
         {difference !== undefined && (
-          <p type="danger">Difference: {difference} USD</p>
+          <Typography.Title
+            level={4}
+            type={difference <= 2 ? "success" : "danger"}
+          >
+            Difference: {difference} USD
+          </Typography.Title>
         )}
 
         <Divider></Divider>

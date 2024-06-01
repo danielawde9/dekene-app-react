@@ -22,3 +22,4 @@ export function formatDateToUTC(date) {
   // Convert to ISO string and split to get the date part
   return utcDate.toISOString().split("T")[0];
 }
+

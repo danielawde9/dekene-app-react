@@ -1,11 +1,9 @@
-// ClosingBalanceForm.js
 import React from "react";
 import {
   Button,
   Card,
   DatePicker,
   Divider,
-  Flex,
   Form,
   InputNumber,
   Select,
@@ -29,19 +27,17 @@ const ClosingBalanceForm = ({
   handleSubmit,
 }) => {
   const calculateTotalInUSD = (usd, lbp) => usd + lbp / exchangeRate;
-  console.log(closingBalances,'com')
+
   return (
-    <Flex vertical justify="center" align="center">
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <Card title={title} style={{ marginTop: 20, maxWidth: 500 }}>
         <Form.Item label="Closing Balance USD">
           <InputNumber
             min={0}
-            // formatter={(value) => formatNumber(value)}
             value={closingBalances.usd}
             onChange={(value) => {
               if (value !== undefined && !isNaN(value)) {
                 setClosingBalances((prev) => ({ ...prev, usd: value }));
-                console.log(closingBalances,'sasd')
               }
             }}
             style={{ width: "100%" }}
@@ -50,7 +46,6 @@ const ClosingBalanceForm = ({
         <Form.Item label="Closing Balance LBP">
           <InputNumber
             min={0}
-            formatter={(value) => formatNumber(value)}
             value={closingBalances.lbp}
             onChange={(value) => {
               if (value !== undefined && !isNaN(value)) {
@@ -113,7 +108,6 @@ const ClosingBalanceForm = ({
               ]}
             >
               <DatePicker
-                showNow
                 format="YYYY-MM-DD"
                 disabledDate={(date) =>
                   missingDates.some(
@@ -137,7 +131,7 @@ const ClosingBalanceForm = ({
           </Form.Item>
         </Form>
       </Card>
-    </Flex>
+    </div>
   );
 };
 

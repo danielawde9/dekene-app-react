@@ -11,6 +11,7 @@ import {
 } from "antd";
 import { formatNumber } from "../utils/formatNumber";
 import { createClient } from "@supabase/supabase-js";
+import { toast } from "react-toastify";
 
 const { Option } = Select;
 
@@ -49,7 +50,7 @@ const columns = (handleDelete, handlePay) => [
       <>
         <Popconfirm
           title="Sure to delete?"
-          onConfirm={() => handleDelete(record.key)}
+          onConfirm={() => handleDelete(record)}
         >
           <Button type="link">Delete</Button>
         </Popconfirm>
@@ -99,9 +100,18 @@ const Credits = React.memo(
       form.resetFields();
     };
 
-    const handleDelete = (key) => {
-      const newCredits = credits.filter((item) => item.key !== key);
-      setCredits(newCredits);
+    const handleDelete = async (record) => {
+      try {
+        const { error } = await supabase.from("credits").delete().eq("id", record.id);
+        if (error) {
+          toast.error("Error deleting credit: " + error.message);
+        } else {
+          setCredits(credits.filter((item) => item.id !== record.id));
+          toast.success("Credit deleted successfully!");
+        }
+      } catch (error) {
+        toast.error("Error deleting credit: " + error.message);
+      }
     };
 
     const handlePay = (key) => {
@@ -204,7 +214,7 @@ const Credits = React.memo(
         <Table
           dataSource={credits}
           columns={columns(handleDelete, handlePay)}
-          rowKey="key"
+          rowKey="id"
         />
       </Card>
     );

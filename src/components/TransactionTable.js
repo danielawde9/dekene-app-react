@@ -140,6 +140,34 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
     }
   };
 
+  const handleDelete = async (record) => {
+    const { type, id, amount_usd, amount_lbp } = record;
+    try {
+      const { error } = await supabase.from(type.toLowerCase() + "s").delete().eq("id", id);
+
+      if (error) {
+        toast.error("Error deleting transaction: " + error.message);
+      } else {
+        setTransactions(transactions.filter((transaction) => transaction.id !== id));
+        toast.success("Transaction deleted successfully!");
+        // Recalculate balance
+        if (type === "Payment" && record.deduction_source === "daniel") {
+          setBalance((prevBalance) => ({
+            usd: prevBalance.usd + amount_usd,
+            lbp: prevBalance.lbp + amount_lbp,
+          }));
+        } else if (type === "Withdrawal") {
+          setBalance((prevBalance) => ({
+            usd: prevBalance.usd - amount_usd,
+            lbp: prevBalance.lbp - amount_lbp,
+          }));
+        }
+      }
+    } catch (error) {
+      toast.error("Error deleting transaction: " + error.message);
+    }
+  };
+
   const handleConvert = (values) => {
     const convertedValues =
       conversionType === "usd_to_lbp"
@@ -222,6 +250,16 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
           align: "center",
         },
       ],
+    },
+    {
+      title: "Action",
+      key: "action",
+      align: "center",
+      render: (text, record) => (
+        <Button type="link" onClick={() => handleDelete(record)}>
+          Delete
+        </Button>
+      ),
     },
   ];
 
@@ -394,7 +432,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
               style={{ width: "100%" }}
             />
           </Form.Item>
-          <Typography.Title level={5} style={{marginBottom:20}}>
+          <Typography.Title level={5} style={{ marginBottom: 20 }}>
             {conversionType === "usd_to_lbp"
               ? `Converted Amount: ${formatNumber(convertedAmount)} LBP`
               : `Converted Amount: ${formatNumber(convertedAmount)} USD`}

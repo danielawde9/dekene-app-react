@@ -337,501 +337,539 @@ const MainScreen = ({ user }) => {
                   </Card>
                 </Col>
               </Row>
-              <Row gutter={16} style={{ marginTop: "20px" }}>
-                <Col xs={24} sm={12}>
-                  <Card title="Credits">
-                    <Form
-                      onFinish={(values) =>
-                        addTransaction("credit", { ...values, key: Date.now() })
-                      }
-                    >
-                      <Form.Item
-                        name="amount_usd"
-                        label="Amount USD"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please input amount in USD!",
-                          },
-                        ]}
-                      >
-                        <InputNumber
-                          formatter={formatNumber}
-                          style={{ width: "100%" }}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        name="amount_lbp"
-                        label="Amount LBP"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please input amount in LBP!",
-                          },
-                        ]}
-                      >
-                        <InputNumber
-                          formatter={formatNumber}
-                          style={{ width: "100%" }}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        name="person"
-                        label="Person"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please input the person!",
-                          },
-                        ]}
-                      >
-                        <Input />
-                      </Form.Item>
-                      <Form.Item>
-                        <Button type="primary" htmlType="submit">
-                          Add Credit
-                        </Button>
-                      </Form.Item>
-                    </Form>
-                    <Table
-                      dataSource={credits}
-                      columns={[
-                        {
-                          title: "Amount USD",
-                          dataIndex: "amount_usd",
-                          key: "amount_usd",
-                          render: formatNumber,
-                        },
-                        {
-                          title: "Amount LBP",
-                          dataIndex: "amount_lbp",
-                          key: "amount_lbp",
-                          render: formatNumber,
-                        },
-                        { title: "Person", dataIndex: "person", key: "person" },
-                        {
-                          title: "Action",
-                          key: "action",
-                          render: (_, record) => (
-                            <Popconfirm
-                              title="Sure to delete?"
-                              onConfirm={() =>
-                                handleDelete("credit", record.key)
-                              }
-                            >
-                              <Button type="link">Delete</Button>
-                            </Popconfirm>
-                          ),
-                        },
-                      ]}
-                      rowKey="key"
-                    />
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12}>
-                  <Card title="Payments">
-                    <Form
-                      onFinish={(values) =>
-                        addTransaction("payment", {
-                          ...values,
-                          key: Date.now(),
-                        })
-                      }
-                    >
-                      <Form.Item
-                        name="amount_usd"
-                        label="Amount USD"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please input amount in USD!",
-                          },
-                        ]}
-                      >
-                        <InputNumber
-                          formatter={formatNumber}
-                          style={{ width: "100%" }}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        name="amount_lbp"
-                        label="Amount LBP"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please input amount in LBP!",
-                          },
-                        ]}
-                      >
-                        <InputNumber
-                          formatter={formatNumber}
-                          style={{ width: "100%" }}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        name="reference_number"
-                        label="Reference Number"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please input the reference number!",
-                          },
-                        ]}
-                      >
-                        <Input />
-                      </Form.Item>
-                      <Form.Item
-                        name="cause"
-                        label="Cause"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please input the cause!",
-                          },
-                        ]}
-                      >
-                        <Input />
-                      </Form.Item>
-                      <Form.Item
-                        name="deduction_source"
-                        label="Deduction Source"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please select the deduction source!",
-                          },
-                        ]}
-                      >
-                        <Select placeholder="Select deduction source">
-                          <Option value="current">Current Closing</Option>
-                          <Option value="daniel">Daniel</Option>
-                        </Select>
-                      </Form.Item>
-                      <Form.Item>
-                        <Button type="primary" htmlType="submit">
-                          Add Payment
-                        </Button>
-                      </Form.Item>
-                    </Form>
-                    <Table
-                      dataSource={payments}
-                      columns={[
-                        {
-                          title: "Amount USD",
-                          dataIndex: "amount_usd",
-                          key: "amount_usd",
-                          render: formatNumber,
-                        },
-                        {
-                          title: "Amount LBP",
-                          dataIndex: "amount_lbp",
-                          key: "amount_lbp",
-                          render: formatNumber,
-                        },
-                        {
-                          title: "Reference Number",
-                          dataIndex: "reference_number",
-                          key: "reference_number",
-                        },
-                        { title: "Cause", dataIndex: "cause", key: "cause" },
-                        {
-                          title: "Deduction Source",
-                          dataIndex: "deduction_source",
-                          key: "deduction_source",
-                        },
-                        {
-                          title: "Action",
-                          key: "action",
-                          render: (_, record) => (
-                            <Popconfirm
-                              title="Sure to delete?"
-                              onConfirm={() =>
-                                handleDelete("payment", record.key)
-                              }
-                            >
-                              <Button type="link">Delete</Button>
-                            </Popconfirm>
-                          ),
-                        },
-                      ]}
-                      rowKey="key"
-                    />
-                  </Card>
-                </Col>
-              </Row>
-              <Row gutter={16} style={{ marginTop: "20px" }}>
-                <Col xs={24} sm={12}>
-                  <Card title="Sales">
-                    <Form
-                      onFinish={(values) =>
-                        addTransaction("sale", { ...values, key: Date.now() })
-                      }
-                    >
-                      <Form.Item
-                        name="amount_usd"
-                        label="Amount USD"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please input amount in USD!",
-                          },
-                        ]}
-                      >
-                        <InputNumber
-                          formatter={formatNumber}
-                          style={{ width: "100%" }}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        name="amount_lbp"
-                        label="Amount LBP"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please input amount in LBP!",
-                          },
-                        ]}
-                      >
-                        <InputNumber
-                          formatter={formatNumber}
-                          style={{ width: "100%" }}
-                        />
-                      </Form.Item>
-                      <Form.Item>
-                        <Button type="primary" htmlType="submit">
-                          Add Sale
-                        </Button>
-                      </Form.Item>
-                    </Form>
-                    <Table
-                      dataSource={sales}
-                      columns={[
-                        {
-                          title: "Amount USD",
-                          dataIndex: "amount_usd",
-                          key: "amount_usd",
-                          render: formatNumber,
-                        },
-                        {
-                          title: "Amount LBP",
-                          dataIndex: "amount_lbp",
-                          key: "amount_lbp",
-                          render: formatNumber,
-                        },
-                        {
-                          title: "Action",
-                          key: "action",
-                          render: (_, record) => (
-                            <Popconfirm
-                              title="Sure to delete?"
-                              onConfirm={() => handleDelete("sale", record.key)}
-                            >
-                              <Button type="link">Delete</Button>
-                            </Popconfirm>
-                          ),
-                        },
-                      ]}
-                      rowKey="key"
-                    />
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12}>
-                  <Card title="Withdrawals">
-                    <Form
-                      onFinish={(values) =>
-                        addTransaction("withdrawal", {
-                          ...values,
-                          key: Date.now(),
-                        })
-                      }
-                    >
-                      <Form.Item
-                        name="amount_usd"
-                        label="Amount USD"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please input amount in USD!",
-                          },
-                        ]}
-                      >
-                        <InputNumber
-                          formatter={formatNumber}
-                          style={{ width: "100%" }}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        name="amount_lbp"
-                        label="Amount LBP"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please input amount in LBP!",
-                          },
-                        ]}
-                      >
-                        <InputNumber
-                          formatter={formatNumber}
-                          style={{ width: "100%" }}
-                        />
-                      </Form.Item>
-                      <Form.Item>
-                        <Button type="primary" htmlType="submit">
-                          Add Withdrawal (Daniel)
-                        </Button>
-                      </Form.Item>
-                    </Form>
-                    <Table
-                      dataSource={withdrawals}
-                      columns={[
-                        {
-                          title: "Amount USD",
-                          dataIndex: "amount_usd",
-                          key: "amount_usd",
-                          render: formatNumber,
-                        },
-                        {
-                          title: "Amount LBP",
-                          dataIndex: "amount_lbp",
-                          key: "amount_lbp",
-                          render: formatNumber,
-                        },
-                        {
-                          title: "Action",
-                          key: "action",
-                          render: (_, record) => (
-                            <Popconfirm
-                              title="Sure to delete?"
-                              onConfirm={() =>
-                                handleDelete("withdrawal", record.key)
-                              }
-                            >
-                              <Button type="link">Delete</Button>
-                            </Popconfirm>
-                          ),
-                        },
-                      ]}
-                      rowKey="key"
-                    />
-                  </Card>
-                </Col>
-              </Row>
-              <Row gutter={16} style={{ marginTop: "20px" }}>
-                <Col xs={24} sm={12}>
-                  <Card title="Totals">
-                    <Typography.Title level={4}>
-                      Total in USD:{" "}
-                      {(
-                        totals.usd +
-                        totals.lbp / exchangeRate
-                      ).toLocaleString()}
-                    </Typography.Title>
-                    <p>USD: {formatNumber(totals.usd)}</p>
-                    <p>LBP: {formatNumber(totals.lbp)}</p>
-                    <Form.Item
-                      label="Exchange Rate"
-                      style={{ marginTop: "10px" }}
-                    >
-                      <InputNumber
-                        prefix="LBP"
-                        formatter={formatNumber}
-                        defaultValue={DEFAULT_EXCHANGE_RATE}
-                        onChange={(value) => setExchangeRate(value)}
-                        style={{ width: "100%" }}
-                      />
-                    </Form.Item>
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12}>
-                  <Card title="Closing Balance">
-                    <Form>
-                      <Form.Item label="Closing Balance USD">
-                        <InputNumber
-                          formatter={formatNumber}
-                          min={0}
-                          value={closingBalances.usd}
-                          onChange={(value) =>
-                            handleClosingBalancesChange("usd", value)
+              {isConfirmed && (
+                <>
+                  <Row gutter={16}>
+                    <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
+                      <Card title="Credits">
+                        <Form
+                          onFinish={(values) =>
+                            addTransaction("credit", {
+                              ...values,
+                              key: Date.now(),
+                            })
                           }
-                          style={{ width: "100%" }}
-                        />
-                      </Form.Item>
-                      <Form.Item label="Closing Balance LBP">
-                        <InputNumber
-                          min={0}
-                          formatter={formatNumber}
-                          value={closingBalances.lbp}
-                          onChange={(value) =>
-                            handleClosingBalancesChange("lbp", value)
-                          }
-                          style={{ width: "100%" }}
-                        />
-                      </Form.Item>
-                      <Typography.Text>
-                        Total in USD: {closingBalanceInUSD.toLocaleString()}
-                      </Typography.Text>
-                      <Divider />
-                      <Typography.Text>
-                        Your closing difference amount is :{" "}
-                        {totalsAfterDanielUSD.toLocaleString()}
-                      </Typography.Text>
-                      <Divider />
-                      <Form.Item
-                        name="closing_employee"
-                        label="Select Closing Employee"
-                        rules={[
-                          {
-                            required: true,
-                            message: "Please select an employee!",
-                          },
-                        ]}
-                      >
-                        <Select
-                          placeholder="Select an employee"
-                          onChange={(value) => setSelectedUser(value)}
                         >
-                          {users.map((user) => (
-                            <Option key={user.id} value={user.id}>
-                              {user.name}
-                            </Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
-                      {manualDateEnabled && (
-                        <Form.Item
-                          name="closing_date"
-                          label="Select Closing Date"
-                          rules={[
+                          <Form.Item
+                            name="amount_usd"
+                            label="Amount USD"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please input amount in USD!",
+                              },
+                            ]}
+                          >
+                            <InputNumber
+                              formatter={formatNumber}
+                              style={{ width: "100%" }}
+                            />
+                          </Form.Item>
+                          <Form.Item
+                            name="amount_lbp"
+                            label="Amount LBP"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please input amount in LBP!",
+                              },
+                            ]}
+                          >
+                            <InputNumber
+                              formatter={formatNumber}
+                              style={{ width: "100%" }}
+                            />
+                          </Form.Item>
+                          <Form.Item
+                            name="person"
+                            label="Person"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please input the person!",
+                              },
+                            ]}
+                          >
+                            <Input />
+                          </Form.Item>
+                          <Form.Item>
+                            <Button type="primary" htmlType="submit">
+                              Add Credit
+                            </Button>
+                          </Form.Item>
+                        </Form>
+                        <Table
+                          dataSource={credits}
+                          columns={[
                             {
-                              required: true,
-                              message: "Please select a date!",
+                              title: "Amount USD",
+                              dataIndex: "amount_usd",
+                              key: "amount_usd",
+                              render: formatNumber,
+                            },
+                            {
+                              title: "Amount LBP",
+                              dataIndex: "amount_lbp",
+                              key: "amount_lbp",
+                              render: formatNumber,
+                            },
+                            {
+                              title: "Person",
+                              dataIndex: "person",
+                              key: "person",
+                            },
+                            {
+                              title: "Action",
+                              key: "action",
+                              render: (_, record) => (
+                                <Popconfirm
+                                  title="Sure to delete?"
+                                  onConfirm={() =>
+                                    handleDelete("credit", record.key)
+                                  }
+                                >
+                                  <Button type="link">Delete</Button>
+                                </Popconfirm>
+                              ),
                             },
                           ]}
+                          rowKey="key"
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <Card title="Payments" style={{ marginTop: 20 }}>
+                        <Form
+                          onFinish={(values) =>
+                            addTransaction("payment", {
+                              ...values,
+                              key: Date.now(),
+                            })
+                          }
                         >
-                          <DatePicker
-                            format="YYYY-MM-DD"
-                            onChange={(date) => setSelectedDate(date)}
+                          <Form.Item
+                            name="amount_usd"
+                            label="Amount USD"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please input amount in USD!",
+                              },
+                            ]}
+                          >
+                            <InputNumber
+                              formatter={formatNumber}
+                              style={{ width: "100%" }}
+                            />
+                          </Form.Item>
+                          <Form.Item
+                            name="amount_lbp"
+                            label="Amount LBP"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please input amount in LBP!",
+                              },
+                            ]}
+                          >
+                            <InputNumber
+                              formatter={formatNumber}
+                              style={{ width: "100%" }}
+                            />
+                          </Form.Item>
+                          <Form.Item
+                            name="reference_number"
+                            label="Reference Number"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please input the reference number!",
+                              },
+                            ]}
+                          >
+                            <Input />
+                          </Form.Item>
+                          <Form.Item
+                            name="cause"
+                            label="Cause"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please input the cause!",
+                              },
+                            ]}
+                          >
+                            <Input />
+                          </Form.Item>
+                          <Form.Item
+                            name="deduction_source"
+                            label="Deduction Source"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please select the deduction source!",
+                              },
+                            ]}
+                          >
+                            <Select placeholder="Select deduction source">
+                              <Option value="current">Current Closing</Option>
+                              <Option value="daniel">Daniel</Option>
+                            </Select>
+                          </Form.Item>
+                          <Form.Item>
+                            <Button type="primary" htmlType="submit">
+                              Add Payment
+                            </Button>
+                          </Form.Item>
+                        </Form>
+                        <Table
+                          dataSource={payments}
+                          scroll={{ x: true }}
+                          columns={[
+                            {
+                              title: "Amount USD",
+                              dataIndex: "amount_usd",
+                              key: "amount_usd",
+                              render: formatNumber,
+                            },
+                            {
+                              title: "Amount LBP",
+                              dataIndex: "amount_lbp",
+                              key: "amount_lbp",
+                              render: formatNumber,
+                            },
+                            {
+                              title: "Reference Number",
+                              dataIndex: "reference_number",
+                              key: "reference_number",
+                            },
+                            {
+                              title: "Cause",
+                              dataIndex: "cause",
+                              key: "cause",
+                            },
+                            {
+                              title: "Deduction Source",
+                              dataIndex: "deduction_source",
+                              key: "deduction_source",
+                            },
+                            {
+                              title: "Action",
+                              key: "action",
+                              render: (_, record) => (
+                                <Popconfirm
+                                  title="Sure to delete?"
+                                  onConfirm={() =>
+                                    handleDelete("payment", record.key)
+                                  }
+                                >
+                                  <Button type="link">Delete</Button>
+                                </Popconfirm>
+                              ),
+                            },
+                          ]}
+                          rowKey="key"
+                        />
+                      </Card>
+                    </Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col xs={24} sm={12}>
+                      <Card title="Sales" style={{ marginTop: "20px" }}>
+                        <Form
+                          onFinish={(values) =>
+                            addTransaction("sale", {
+                              ...values,
+                              key: Date.now(),
+                            })
+                          }
+                        >
+                          <Form.Item
+                            name="amount_usd"
+                            label="Amount USD"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please input amount in USD!",
+                              },
+                            ]}
+                          >
+                            <InputNumber
+                              formatter={formatNumber}
+                              style={{ width: "100%" }}
+                            />
+                          </Form.Item>
+                          <Form.Item
+                            name="amount_lbp"
+                            label="Amount LBP"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please input amount in LBP!",
+                              },
+                            ]}
+                          >
+                            <InputNumber
+                              formatter={formatNumber}
+                              style={{ width: "100%" }}
+                            />
+                          </Form.Item>
+                          <Form.Item>
+                            <Button type="primary" htmlType="submit">
+                              Add Sale
+                            </Button>
+                          </Form.Item>
+                        </Form>
+                        <Table
+                          dataSource={sales}
+                          columns={[
+                            {
+                              title: "Amount USD",
+                              dataIndex: "amount_usd",
+                              key: "amount_usd",
+                              render: formatNumber,
+                            },
+                            {
+                              title: "Amount LBP",
+                              dataIndex: "amount_lbp",
+                              key: "amount_lbp",
+                              render: formatNumber,
+                            },
+                            {
+                              title: "Action",
+                              key: "action",
+                              render: (_, record) => (
+                                <Popconfirm
+                                  title="Sure to delete?"
+                                  onConfirm={() =>
+                                    handleDelete("sale", record.key)
+                                  }
+                                >
+                                  <Button type="link">Delete</Button>
+                                </Popconfirm>
+                              ),
+                            },
+                          ]}
+                          rowKey="key"
+                        />
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <Card title="Withdrawals" style={{ marginTop: "20px" }}>
+                        <Form
+                          onFinish={(values) =>
+                            addTransaction("withdrawal", {
+                              ...values,
+                              key: Date.now(),
+                            })
+                          }
+                        >
+                          <Form.Item
+                            name="amount_usd"
+                            label="Amount USD"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please input amount in USD!",
+                              },
+                            ]}
+                          >
+                            <InputNumber
+                              formatter={formatNumber}
+                              style={{ width: "100%" }}
+                            />
+                          </Form.Item>
+                          <Form.Item
+                            name="amount_lbp"
+                            label="Amount LBP"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please input amount in LBP!",
+                              },
+                            ]}
+                          >
+                            <InputNumber
+                              formatter={formatNumber}
+                              style={{ width: "100%" }}
+                            />
+                          </Form.Item>
+                          <Form.Item>
+                            <Button type="primary" htmlType="submit">
+                              Add Withdrawal (Daniel)
+                            </Button>
+                          </Form.Item>
+                        </Form>
+                        <Table
+                          dataSource={withdrawals}
+                          columns={[
+                            {
+                              title: "Amount USD",
+                              dataIndex: "amount_usd",
+                              key: "amount_usd",
+                              render: formatNumber,
+                            },
+                            {
+                              title: "Amount LBP",
+                              dataIndex: "amount_lbp",
+                              key: "amount_lbp",
+                              render: formatNumber,
+                            },
+                            {
+                              title: "Action",
+                              key: "action",
+                              render: (_, record) => (
+                                <Popconfirm
+                                  title="Sure to delete?"
+                                  onConfirm={() =>
+                                    handleDelete("withdrawal", record.key)
+                                  }
+                                >
+                                  <Button type="link">Delete</Button>
+                                </Popconfirm>
+                              ),
+                            },
+                          ]}
+                          rowKey="key"
+                        />
+                      </Card>
+                    </Col>
+                  </Row>
+                  <Row gutter={16}>
+                    <Col xs={24} sm={12}>
+                      <Card
+                        title="Totals"
+                        style={{ marginTop: "20px" }}
+                        actions={[
+                          <Typography.Title level={4}>
+                            Total in USD:{" "}
+                            {(
+                              totals.usd +
+                              totals.lbp / exchangeRate
+                            ).toLocaleString()}
+                          </Typography.Title>,
+                        ]}
+                      >
+                        <p>USD: {formatNumber(totals.usd)}</p>
+                        <p>LBP: {formatNumber(totals.lbp)}</p>
+                        <Form.Item
+                          label="Exchange Rate"
+                          style={{ marginTop: "10px" }}
+                        >
+                          <InputNumber
+                            prefix="LBP"
+                            formatter={formatNumber}
+                            defaultValue={DEFAULT_EXCHANGE_RATE}
+                            onChange={(value) => setExchangeRate(value)}
+                            style={{ width: "100%" }}
                           />
                         </Form.Item>
-                      )}
-                      <Form.Item>
-                        <Button
-                          type="primary"
-                          onClick={handleSubmit}
-                          disabled={!isClosingAllowed}
-                        >
-                          Close Today
-                        </Button>
-                        {!isClosingAllowed && (
-                          <Typography.Text type="danger">
-                            Your closing amount is not correct greater than 2$
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <Card
+                        title="Closing Balance"
+                        style={{ marginTop: "20px" }}
+                      >
+                        <Form>
+                          <Form.Item label="Closing Balance USD">
+                            <InputNumber
+                              formatter={formatNumber}
+                              min={0}
+                              value={closingBalances.usd}
+                              onChange={(value) =>
+                                handleClosingBalancesChange("usd", value)
+                              }
+                              style={{ width: "100%" }}
+                            />
+                          </Form.Item>
+                          <Form.Item label="Closing Balance LBP">
+                            <InputNumber
+                              min={0}
+                              formatter={formatNumber}
+                              value={closingBalances.lbp}
+                              onChange={(value) =>
+                                handleClosingBalancesChange("lbp", value)
+                              }
+                              style={{ width: "100%" }}
+                            />
+                          </Form.Item>
+                          <Typography.Text>
+                            Total in USD: {closingBalanceInUSD.toLocaleString()}
                           </Typography.Text>
-                        )}
-                      </Form.Item>
-                    </Form>
-                  </Card>
-                </Col>
-              </Row>
+                          <Divider />
+                          <Typography.Text
+                            style={{
+                              color:
+                                totalsAfterDanielUSD.toLocaleString() < 2
+                                  ? "green"
+                                  : "red",
+                            }}
+                          >
+                            Your closing difference amount is :{" "}
+                            {totalsAfterDanielUSD.toLocaleString()}
+                          </Typography.Text>
+                          <Divider />
+                          <Form.Item
+                            name="closing_employee"
+                            label="Select Closing Employee"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please select an employee!",
+                              },
+                            ]}
+                          >
+                            <Select
+                              placeholder="Select an employee"
+                              onChange={(value) => setSelectedUser(value)}
+                            >
+                              {users.map((user) => (
+                                <Option key={user.id} value={user.id}>
+                                  {user.name}
+                                </Option>
+                              ))}
+                            </Select>
+                          </Form.Item>
+                          {manualDateEnabled && (
+                            <Form.Item
+                              name="closing_date"
+                              label="Select Closing Date"
+                              rules={[
+                                {
+                                  required: true,
+                                  message: "Please select a date!",
+                                },
+                              ]}
+                            >
+                              <DatePicker
+                                format="YYYY-MM-DD"
+                                onChange={(date) => setSelectedDate(date)}
+                              />
+                            </Form.Item>
+                          )}
+                          <Form.Item>
+                            <Button
+                              type="primary"
+                              onClick={handleSubmit}
+                              disabled={!isClosingAllowed}
+                            >
+                              Close Today
+                            </Button>
+                            {!isClosingAllowed && (
+                              <Typography.Text type="danger">
+                                Your closing amount is not correct greater than
+                                2$
+                              </Typography.Text>
+                            )}
+                          </Form.Item>
+                        </Form>
+                      </Card>
+                    </Col>
+                  </Row>
+                </>
+              )}
+
               <Modal
                 title="Confirm Closing"
                 open={isModalVisible}

@@ -162,12 +162,11 @@ const MainScreen = ({ user }) => {
   const addTransaction = (type, transaction) => {
     switch (type) {
       case "credit":
-        console.log(transaction);
         if (transaction.status) {
-          transaction.amount_lbp = -transaction.amount_lbp;
-          transaction.amount_usd = -transaction.amount_usd;
-          setCredits((prev) => [...prev, transaction]);
+          transaction.amount_lbp = -Math.abs(transaction.amount_lbp);
+          transaction.amount_usd = -Math.abs(transaction.amount_usd);
         }
+        setCredits((prev) => [...prev, transaction]);
         break;
       case "payment":
         setPayments((prev) => [...prev, transaction]);
@@ -241,12 +240,13 @@ const MainScreen = ({ user }) => {
 
       if (balanceError) throw balanceError;
 
-      // Insert credits
+      // Insert or update credits
       for (const credit of credits) {
-        console.log(credit, "credit");
-        const { error: creditError } = await supabase
+        const { data, error: creditError } = await supabase
           .from("credits")
-          .insert([{ ...credit, date, user_id: selectedUser }]);
+          .upsert([{ ...credit, date, user_id: selectedUser }], {
+            onConflict: ["id"],
+          });
         if (creditError) throw creditError;
       }
 

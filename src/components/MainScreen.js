@@ -10,7 +10,6 @@ import {
   Switch,
   DatePicker,
   Tabs,
-  Alert,
   Divider,
   Typography,
   Card,
@@ -24,6 +23,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Item from "antd/es/list/Item";
 import TransactionTable from "./TransactionTable";
+import { disableTomorrow } from "../utils/disableTomorrow";
 const { Content, Footer } = Layout;
 const { Option } = Select;
 
@@ -51,6 +51,7 @@ const MainScreen = ({ user }) => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
+  const [unpaidCredits, setUnpaidCredits] = useState([]);
 
   useEffect(() => {
     // Fetch data on mount
@@ -91,6 +92,17 @@ const MainScreen = ({ user }) => {
         toast.error("Error fetching settings: " + settingsError.message);
       } else if (settingsData.length > 0) {
         setManualDateEnabled(settingsData[0].manual_date_enabled);
+      }
+
+      const { data, error } = await supabase
+        .from("credits")
+        .select("*")
+        .eq("status", false); // Fetch unpaid credits
+
+      if (error) {
+        toast.error("Error fetching unpaid credits: " + error.message);
+      } else {
+        setUnpaidCredits(data);
       }
     };
 
@@ -144,7 +156,6 @@ const MainScreen = ({ user }) => {
       totalCreditsLBP -
       totalPaymentsLBP -
       totalWithdrawalsLBP;
-
     setTotals({ usd: netUSD, lbp: netLBP });
   }, [credits, payments, sales, withdrawals, openingBalances]);
 
@@ -189,6 +200,7 @@ const MainScreen = ({ user }) => {
   const handleConfirm = () => {
     // Confirm opening balances
     setIsConfirmed(true);
+    calculateTotals();
   };
 
   const handleClosingBalancesChange = (key, value) => {
@@ -282,6 +294,23 @@ const MainScreen = ({ user }) => {
     } catch (error) {
       toast.error("Error updating settings: " + error.message);
     }
+  };
+
+  const handleUnpaidCreditSelection = (selectedCredits) => {
+    const updatedCredits = unpaidCredits.filter((credit) =>
+      selectedCredits.includes(credit.id)
+    );
+
+    // Mark the selected credits as paid and add them to the credits state
+    updatedCredits.forEach((credit) => {
+      credit.status = true; // Mark as paid
+      addTransaction("credit", credit); // Add to the credits state
+    });
+
+    // Update the unpaid credits state
+    setUnpaidCredits((prev) =>
+      prev.filter((credit) => !selectedCredits.includes(credit.id))
+    );
   };
 
   const calculateTotalsAfterDaniel = () => {
@@ -398,6 +427,23 @@ const MainScreen = ({ user }) => {
                             </Button>
                           </Form.Item>
                         </Form>
+                        <Form.Item label="Unpaid Credits">
+                          <Select
+                            mode="multiple"
+                            placeholder="Select unpaid credits to mark as paid"
+                            onChange={handleUnpaidCreditSelection}
+                          >
+                            {unpaidCredits.map((credit) => (
+                              <Option key={credit.id} value={credit.id}>
+                                {`USD: ${formatNumber(
+                                  credit.amount_usd
+                                )}, LBP: ${formatNumber(
+                                  credit.amount_lbp
+                                )}, Person: ${credit.person}`}
+                              </Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
                         <Table
                           dataSource={credits}
                           columns={[
@@ -417,6 +463,11 @@ const MainScreen = ({ user }) => {
                               title: "Person",
                               dataIndex: "person",
                               key: "person",
+                            },
+                            {
+                              title: "Status",
+                              dataIndex: "status",
+                              key: "status",
                             },
                             {
                               title: "Action",
@@ -801,7 +852,8 @@ const MainScreen = ({ user }) => {
                           <Typography.Text
                             style={{
                               color:
-                                totalsAfterDanielUSD.toLocaleString() < 2
+                                totalsAfterDanielUSD.toLocaleString() < 2 &&
+                                totalsAfterDanielUSD.toLocaleString() >= 0
                                   ? "green"
                                   : "red",
                             }}
@@ -845,6 +897,7 @@ const MainScreen = ({ user }) => {
                               <DatePicker
                                 format="YYYY-MM-DD"
                                 onChange={(date) => setSelectedDate(date)}
+                                // disabledDate={disableTomorrow}
                               />
                             </Form.Item>
                           )}

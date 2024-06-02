@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Layout,
   Row,
@@ -13,273 +13,164 @@ import {
   Alert,
   Divider,
   Typography,
+  Card,
+  Table,
+  InputNumber,
+  Popconfirm,
+  Input,
 } from "antd";
 import { createClient } from "@supabase/supabase-js";
-import DailyBalance from "./DailyBalance";
-import Credits from "./Credits";
-import Payments from "./Payments";
-import Sales from "./Sales";
-import Daniel from "./Daniel";
-import TransactionTable from "./TransactionTable";
-import TotalsCard from "./TotalsCard";
-import ClosingBalanceForm from "./ClosingBalanceForm";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { formatDateToUTC, formatNumber } from "../utils/formatNumber";
-import Item from "antd/es/list/Item";
 
 const { Content, Footer } = Layout;
+const { Option } = Select;
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey = process.env.REACT_APP_SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+const DEFAULT_EXCHANGE_RATE = 90000;
+
+const formatNumber = (value) => new Intl.NumberFormat().format(value);
+
 const MainScreen = ({ user }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [openingBalances, setOpeningBalances] = useState({ usd: 0, lbp: 0 });
+  const [closingBalances, setClosingBalances] = useState({ usd: 0, lbp: 0 });
   const [credits, setCredits] = useState([]);
   const [payments, setPayments] = useState([]);
   const [sales, setSales] = useState([]);
-  const [daniel, setDaniel] = useState([]);
-  const [totals, setTotals] = useState({
-    beforeDaniel: { usd: 0, lbp: 0 },
-    afterDaniel: { usd: 0, lbp: 0 },
-  });
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [totals, setTotals] = useState({ usd: 0, lbp: 0 });
+  const [exchangeRate, setExchangeRate] = useState(DEFAULT_EXCHANGE_RATE);
+  const [manualDateEnabled, setManualDateEnabled] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(currentDate);
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [exchangeRate, setExchangeRate] = useState(90000);
-  const [manualDateEnabled, setManualDateEnabled] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(currentDate);
-  const [missingDates, setMissingDates] = useState([]);
   const [isConfirmed, setIsConfirmed] = useState(false);
-  const [closingBalances, setClosingBalances] = useState({ usd: 0, lbp: 0 });
-  const [difference, setDifference] = useState(0);
 
   useEffect(() => {
+    // Fetch data on mount
     const fetchData = async () => {
-      const fetchOpeningBalances = async () => {
-        const { data, error } = await supabase
-          .from("dailybalances")
-          .select("*")
-          .order("date", { ascending: false })
-          .limit(1);
+      // Fetch opening balances
+      const { data: balanceData, error: balanceError } = await supabase
+        .from("dailybalances")
+        .select("*")
+        .order("date", { ascending: false })
+        .limit(1);
 
-        if (error) {
-          toast.error("Error fetching opening balances: " + error.message);
-        } else {
-          const lastDayBalance = data[0];
-          setOpeningBalances({
-            date: lastDayBalance ? lastDayBalance.date : "no date found",
-            usd: lastDayBalance ? lastDayBalance.closing_usd : 0,
-            lbp: lastDayBalance ? lastDayBalance.closing_lbp : 0,
-          });
-        }
-      };
+      if (balanceError) {
+        toast.error("Error fetching opening balances: " + balanceError.message);
+      } else {
+        const lastDayBalance = balanceData[0];
+        setOpeningBalances({
+          usd: lastDayBalance ? lastDayBalance.closing_usd : 0,
+          lbp: lastDayBalance ? lastDayBalance.closing_lbp : 0,
+        });
+      }
 
-      const fetchUsers = async () => {
-        const { data, error } = await supabase.from("users").select("*");
+      // Fetch users
+      const { data: userData, error: userError } = await supabase.from("users").select("*");
+      if (userError) {
+        toast.error("Error fetching users: " + userError.message);
+      } else {
+        setUsers(userData);
+      }
 
-        if (error) {
-          toast.error("Error fetching users: " + error.message);
-        } else {
-          setUsers(data);
-        }
-      };
-
-      const fetchSettings = async () => {
-        const { data, error } = await supabase
-          .from("settings")
-          .select("*")
-          .limit(1);
-
-        if (error) {
-          toast.error("Error fetching settings: " + error.message);
-        } else if (data.length > 0) {
-          setManualDateEnabled(data[0].manual_date_enabled);
-        }
-      };
-
-      const checkMissingDates = async () => {
-        const { data, error } = await supabase
-          .from("dailybalances")
-          .select("date")
-          .order("date", { ascending: true });
-
-        if (error) {
-          toast.error("Error fetching daily balances: " + error.message);
-          return;
-        }
-
-        const dates = data.map((record) => new Date(record.date));
-        const missingDates = [];
-        let date = new Date(dates[0]);
-
-        while (date <= currentDate) {
-          if (
-            date.getDay() !== 0 &&
-            !dates.some((d) => d.getTime() === date.getTime())
-          ) {
-            missingDates.push(new Date(date));
-          }
-          date.setDate(date.getDate() + 1);
-        }
-
-        setMissingDates(missingDates);
-      };
-
-      await Promise.all([
-        fetchOpeningBalances(),
-        fetchUsers(),
-        fetchSettings(),
-        checkMissingDates(),
-      ]);
+      // Fetch settings
+      const { data: settingsData, error: settingsError } = await supabase.from("settings").select("*").limit(1);
+      if (settingsError) {
+        toast.error("Error fetching settings: " + settingsError.message);
+      } else if (settingsData.length > 0) {
+        setManualDateEnabled(settingsData[0].manual_date_enabled);
+      }
     };
 
     fetchData();
-  }, [currentDate]);
-
-  useEffect(() => {
-    calculateTotals();
-  }, [credits, payments, sales, daniel]);
-
-  const handleTransactionChange = useCallback(() => {
-    calculateTotals();
-  }, [credits, payments, sales, daniel]);
-
-  const addCredit = useCallback(
-    (credit) => {
-      setCredits([...credits, credit]);
-      handleTransactionChange();
-    },
-    [credits, handleTransactionChange]
-  );
-
-  const addPayment = useCallback(
-    (payment) => {
-      setPayments([...payments, payment]);
-      handleTransactionChange();
-    },
-    [payments, handleTransactionChange]
-  );
-
-  const addSale = useCallback(
-    (sale) => {
-      setSales([...sales, sale]);
-      handleTransactionChange();
-    },
-    [sales, handleTransactionChange]
-  );
-
-  const addWithdrawal = useCallback(
-    (withdrawal) => {
-      setDaniel([...daniel, withdrawal]);
-      handleTransactionChange();
-    },
-    [daniel, handleTransactionChange]
-  );
-
-  const calculateTotals = useCallback(() => {
-    const totalCreditsUSD = credits.reduce(
-      (acc, credit) => acc + credit.amount_usd,
-      0
-    );
-    const totalCreditsLBP = credits.reduce(
-      (acc, credit) => acc + credit.amount_lbp,
-      0
-    );
-    const totalPaymentsUSD = payments.reduce(
-      (acc, payment) =>
-        payment.deduction_source !== "daniel" ? acc + payment.amount_usd : acc,
-      0
-    );
-    const totalPaymentsLBP = payments.reduce(
-      (acc, payment) =>
-        payment.deduction_source !== "daniel" ? acc + payment.amount_lbp : acc,
-      0
-    );
-    const totalSalesUSD = sales.reduce((acc, sale) => acc + sale.amount_usd, 0);
-    const totalSalesLBP = sales.reduce((acc, sale) => acc + sale.amount_lbp, 0);
-    const totalDanielUSD = daniel.reduce(
-      (acc, withdrawal) => acc + withdrawal.amount_usd,
-      0
-    );
-    const totalDanielLBP = daniel.reduce(
-      (acc, withdrawal) => acc + withdrawal.amount_lbp,
-      0
-    );
-
-    const beforeDanielUSD =
-      openingBalances.usd - totalCreditsUSD - totalPaymentsUSD + totalSalesUSD;
-    const beforeDanielLBP =
-      openingBalances.lbp - totalCreditsLBP - totalPaymentsLBP + totalSalesLBP;
-
-    const afterDanielUSD = beforeDanielUSD - totalDanielUSD;
-    const afterDanielLBP = beforeDanielLBP - totalDanielLBP;
-
-    setTotals({
-      beforeDaniel: {
-        usd: beforeDanielUSD,
-        lbp: beforeDanielLBP,
-      },
-      afterDaniel: { usd: afterDanielUSD, lbp: afterDanielLBP },
-    });
-  }, [credits, payments, sales, daniel, openingBalances]);
-
-  const calculateTotalInUSD = useCallback(
-    (usd, lbp) => usd + lbp / exchangeRate,
-    [exchangeRate]
-  );
-
-  const handleConfirm = useCallback(() => {
-    setIsConfirmed(true);
   }, []);
 
-  const updateClosingBalance = (amountUSD, amountLBP) => {
-    setClosingBalances((prev) => ({
-      usd: prev.usd + amountUSD,
-      lbp: prev.lbp + amountLBP,
-    }));
+  useEffect(() => {
+    // Calculate totals whenever transactions change
+    calculateTotals();
+  }, [credits, payments, sales, withdrawals]);
+
+  const calculateTotals = useCallback(() => {
+    const totalCreditsUSD = credits.reduce((acc, credit) => acc + credit.amount_usd, 0);
+    const totalCreditsLBP = credits.reduce((acc, credit) => acc + credit.amount_lbp, 0);
+    const totalPaymentsUSD = payments.reduce((acc, payment) => acc + payment.amount_usd, 0);
+    const totalPaymentsLBP = payments.reduce((acc, payment) => acc + payment.amount_lbp, 0);
+    const totalSalesUSD = sales.reduce((acc, sale) => acc + sale.amount_usd, 0);
+    const totalSalesLBP = sales.reduce((acc, sale) => acc + sale.amount_lbp, 0);
+    const totalWithdrawalsUSD = withdrawals.reduce((acc, withdrawal) => acc + withdrawal.amount_usd, 0);
+    const totalWithdrawalsLBP = withdrawals.reduce((acc, withdrawal) => acc + withdrawal.amount_lbp, 0);
+
+    const netUSD = openingBalances.usd + totalSalesUSD - totalCreditsUSD - totalPaymentsUSD - totalWithdrawalsUSD;
+    const netLBP = openingBalances.lbp + totalSalesLBP - totalCreditsLBP - totalPaymentsLBP - totalWithdrawalsLBP;
+
+    setTotals({ usd: netUSD, lbp: netLBP });
+  }, [credits, payments, sales, withdrawals, openingBalances]);
+
+  const addTransaction = (type, transaction) => {
+    switch (type) {
+      case "credit":
+        setCredits((prev) => [...prev, transaction]);
+        break;
+      case "payment":
+        setPayments((prev) => [...prev, transaction]);
+        break;
+      case "sale":
+        setSales((prev) => [...prev, transaction]);
+        break;
+      case "withdrawal":
+        setWithdrawals((prev) => [...prev, transaction]);
+        break;
+      default:
+        break;
+    }
   };
 
-  const handleClosingBalancesChange = useCallback(
-    (updatedBalances) => {
-      const { usd, lbp } = updatedBalances;
-      if (
-        usd !== undefined &&
-        lbp !== undefined &&
-        !isNaN(usd) &&
-        !isNaN(lbp)
-      ) {
-        setClosingBalances(updatedBalances);
-        const closingTotalUSD = calculateTotalInUSD(usd, lbp);
-        const danielTotalUSD = calculateTotalInUSD(
-          totals.afterDaniel.usd,
-          totals.afterDaniel.lbp
-        );
-        setDifference(Math.abs(closingTotalUSD - danielTotalUSD));
-      }
-    },
-    [calculateTotalInUSD, totals]
-  );
+  const handleDelete = (type, key) => {
+    switch (type) {
+      case "credit":
+        setCredits((prev) => prev.filter((item) => item.key !== key));
+        break;
+      case "payment":
+        setPayments((prev) => prev.filter((item) => item.key !== key));
+        break;
+      case "sale":
+        setSales((prev) => prev.filter((item) => item.key !== key));
+        break;
+      case "withdrawal":
+        setWithdrawals((prev) => prev.filter((item) => item.key !== key));
+        break;
+      default:
+        break;
+    }
+  };
 
-  const handleSubmit = useCallback(async () => {
+  const handleConfirm = () => {
+    // Confirm opening balances
+    setIsConfirmed(true);
+  };
+
+  const handleClosingBalancesChange = (key, value) => {
+    setClosingBalances((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSubmit = async () => {
     if (!selectedUser) {
       toast.error("Please select an employee to close the day.");
       return;
     }
-    if (sales.length === 0 || daniel.length === 0) {
-      toast.error("Please enter at least one sale and one withdrawal.");
-      return;
-    }
+    // Show modal for confirmation
     setIsModalVisible(true);
-  }, [selectedUser, sales, daniel]);
+  };
 
-  const handleConfirmSubmit = useCallback(async () => {
+  const handleConfirmSubmit = async () => {
     const { usd: closing_usd, lbp: closing_lbp } = closingBalances;
-    const date = manualDateEnabled
-      ? formatDateToUTC(selectedDate)
-      : formatDateToUTC(currentDate);
+    const date = manualDateEnabled ? selectedDate : currentDate;
 
     try {
       const { data: balanceData, error: balanceError } = await supabase
@@ -299,78 +190,43 @@ const MainScreen = ({ user }) => {
 
       // Insert credits
       for (const credit of credits) {
-        const { error: creditError } = await supabase
-          .from("credits")
-          .insert([{ ...credit, date, user_id: selectedUser }]);
+        const { error: creditError } = await supabase.from("credits").insert([{ ...credit, date, user_id: selectedUser }]);
         if (creditError) throw creditError;
       }
 
       // Insert payments
       for (const payment of payments) {
-        const { error: paymentError } = await supabase.from("payments").insert([
-          {
-            ...payment,
-            date,
-            user_id: selectedUser,
-            deduction_source: "daniel",
-          },
-        ]);
+        const { error: paymentError } = await supabase.from("payments").insert([{ ...payment, date, user_id: selectedUser }]);
         if (paymentError) throw paymentError;
-
-        // Update withdrawal if necessary
-        if (payment.deduction_source === "daniel") {
-          const { error: withdrawalUpdateError } = await supabase
-            .from("daniel")
-            .update({
-              amount_usd: payment.amount_usd,
-              amount_lbp: payment.amount_lbp,
-            })
-            .eq("date", date);
-          if (withdrawalUpdateError) throw withdrawalUpdateError;
-        }
       }
 
       // Insert sales
       for (const sale of sales) {
-        const { error: saleError } = await supabase
-          .from("sales")
-          .insert([{ ...sale, date, user_id: selectedUser }]);
+        const { error: saleError } = await supabase.from("sales").insert([{ ...sale, date, user_id: selectedUser }]);
         if (saleError) throw saleError;
       }
 
-      // Insert daniel
-      for (const withdrawal of daniel) {
-        const { error: withdrawalError } = await supabase
-          .from("daniel")
-          .insert([{ ...withdrawal, date, user_id: selectedUser }]);
+      // Insert withdrawals
+      for (const withdrawal of withdrawals) {
+        const { error: withdrawalError } = await supabase.from("withdrawals").insert([{ ...withdrawal, date, user_id: selectedUser }]);
         if (withdrawalError) throw withdrawalError;
       }
 
       toast.success("Daily balance and transactions submitted successfully!");
-      // Clear all the state after submission
+
+      // Reset state after submission
       setCredits([]);
       setPayments([]);
       setSales([]);
-      setDaniel([]);
+      setWithdrawals([]);
       setOpeningBalances({ usd: closing_usd, lbp: closing_lbp });
       setIsModalVisible(false);
     } catch (error) {
       toast.error("Error submitting transactions: " + error.message);
     }
-  }, [
-    selectedUser,
-    openingBalances,
-    credits,
-    payments,
-    sales,
-    daniel,
-    closingBalances,
-    manualDateEnabled,
-    selectedDate,
-    currentDate,
-  ]);
+  };
 
-  const handleSwitchChange = useCallback(async (checked) => {
+  const handleSwitchChange = async (checked) => {
     setManualDateEnabled(checked);
     try {
       const { data, error } = await supabase
@@ -381,119 +237,337 @@ const MainScreen = ({ user }) => {
     } catch (error) {
       toast.error("Error updating settings: " + error.message);
     }
-  }, []);
+  };
 
   return (
     <Layout className="layout">
       <ToastContainer />
       <Content style={{ padding: "0 50px" }}>
         <Tabs defaultActiveKey="1">
-          <Item tab="Main View" key="1">
+          <Tabs.TabPane tab="Main View" key="1">
             <div className="site-layout-content">
               <h1>Financial Tracking App</h1>
-              {missingDates.length > 0 && (
-                <Alert
-                  message="Missing dates detected"
-                  description={
-                    <>
-                      Please fill out the missing dates:
-                      <ul>
-                        {missingDates.map((date) => (
-                          <li key={date.toISOString()}>
-                            {date.toISOString().split("T")[0]}
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  }
-                  type="error"
-                  showIcon
-                  style={{ marginBottom: 20 }}
-                />
-              )}
               <Row gutter={16}>
-                <Col xs={24} span={24}>
-                  <DailyBalance
-                    date={currentDate}
-                    openingBalances={openingBalances}
-                    onConfirm={handleConfirm}
-                  />
+                <Col xs={24}>
+                  <Card
+                    title="Opening Balance"
+                    actions={[
+                      <Button type="primary" onClick={handleConfirm}>
+                        Confirm
+                      </Button>,
+                    ]}
+                  >
+                    <Typography.Title level={5}>
+                      Date: {currentDate.toISOString().split("T")[0]}
+                    </Typography.Title>
+                    <Typography.Title level={5}>
+                      Closing USD: {formatNumber(openingBalances.usd)}
+                    </Typography.Title>
+                    <Typography.Title level={5}>
+                      Closing LBP: {formatNumber(openingBalances.lbp)}
+                    </Typography.Title>
+                    <Typography.Text>
+                      Please ensure that the amount of money currently available matches the amount displayed. If they match, kindly click "confirm" to continue.
+                    </Typography.Text>
+                  </Card>
                 </Col>
               </Row>
-              {isConfirmed && (
-                <>
-                  <Row gutter={16} style={{ marginTop: "20px" }}>
-                    <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
-                      <Credits
-                        addCredit={addCredit}
-                        selectedUser={selectedUser}
-                        updateClosingBalance={updateClosingBalance}
+              <Row gutter={16} style={{ marginTop: "20px" }}>  
+                <Col xs={24} sm={12}>
+                  <Card title="Credits">
+                    <Form
+                      onFinish={(values) => addTransaction("credit", { ...values, key: Date.now() })}
+                    >
+                      <Form.Item
+                        name="amount_usd"
+                        label="Amount USD"
+                        rules={[{ required: true, message: "Please input amount in USD!" }]}
+                      >
+                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                      </Form.Item>
+                      <Form.Item
+                        name="amount_lbp"
+                        label="Amount LBP"
+                        rules={[{ required: true, message: "Please input amount in LBP!" }]}
+                      >
+                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                      </Form.Item>
+                      <Form.Item
+                        name="person"
+                        label="Person"
+                        rules={[{ required: true, message: "Please input the person!" }]}
+                      >
+                        <Input />
+                      </Form.Item>
+                      <Form.Item>
+                        <Button type="primary" htmlType="submit">
+                          Add Credit
+                        </Button>
+                      </Form.Item>
+                    </Form>
+                    <Table
+                      dataSource={credits}
+                      columns={[
+                        { title: "Amount USD", dataIndex: "amount_usd", key: "amount_usd", render: formatNumber },
+                        { title: "Amount LBP", dataIndex: "amount_lbp", key: "amount_lbp", render: formatNumber },
+                        { title: "Person", dataIndex: "person", key: "person" },
+                        {
+                          title: "Action",
+                          key: "action",
+                          render: (_, record) => (
+                            <Popconfirm title="Sure to delete?" onConfirm={() => handleDelete("credit", record.key)}>
+                              <Button type="link">Delete</Button>
+                            </Popconfirm>
+                          ),
+                        },
+                      ]}
+                      rowKey="key"
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Card title="Payments">
+                    <Form
+                      onFinish={(values) => addTransaction("payment", { ...values, key: Date.now() })}
+                    >
+                      <Form.Item
+                        name="amount_usd"
+                        label="Amount USD"
+                        rules={[{ required: true, message: "Please input amount in USD!" }]}
+                      >
+                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                      </Form.Item>
+                      <Form.Item
+                        name="amount_lbp"
+                        label="Amount LBP"
+                        rules={[{ required: true, message: "Please input amount in LBP!" }]}
+                      >
+                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                      </Form.Item>
+                      <Form.Item
+                        name="reference_number"
+                        label="Reference Number"
+                        rules={[{ required: true, message: "Please input the reference number!" }]}
+                      >
+                        <Input />
+                      </Form.Item>
+                      <Form.Item
+                        name="cause"
+                        label="Cause"
+                        rules={[{ required: true, message: "Please input the cause!" }]}
+                      >
+                        <Input />
+                      </Form.Item>
+                      <Form.Item>
+                        <Button type="primary" htmlType="submit">
+                          Add Payment
+                        </Button>
+                      </Form.Item>
+                    </Form>
+                    <Table
+                      dataSource={payments}
+                      columns={[
+                        { title: "Amount USD", dataIndex: "amount_usd", key: "amount_usd", render: formatNumber },
+                        { title: "Amount LBP", dataIndex: "amount_lbp", key: "amount_lbp", render: formatNumber },
+                        { title: "Reference Number", dataIndex: "reference_number", key: "reference_number" },
+                        { title: "Cause", dataIndex: "cause", key: "cause" },
+                        {
+                          title: "Action",
+                          key: "action",
+                          render: (_, record) => (
+                            <Popconfirm title="Sure to delete?" onConfirm={() => handleDelete("payment", record.key)}>
+                              <Button type="link">Delete</Button>
+                            </Popconfirm>
+                          ),
+                        },
+                      ]}
+                      rowKey="key"
+                    />
+                  </Card>
+                </Col>
+              </Row>
+              <Row gutter={16} style={{ marginTop: "20px" }}>
+                <Col xs={24} sm={12}>
+                  <Card title="Sales">
+                    <Form
+                      onFinish={(values) => addTransaction("sale", { ...values, key: Date.now() })}
+                    >
+                      <Form.Item
+                        name="amount_usd"
+                        label="Amount USD"
+                        rules={[{ required: true, message: "Please input amount in USD!" }]}
+                      >
+                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                      </Form.Item>
+                      <Form.Item
+                        name="amount_lbp"
+                        label="Amount LBP"
+                        rules={[{ required: true, message: "Please input amount in LBP!" }]}
+                      >
+                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                      </Form.Item>
+                      <Form.Item>
+                        <Button type="primary" htmlType="submit">
+                          Add Sale
+                        </Button>
+                      </Form.Item>
+                    </Form>
+                    <Table
+                      dataSource={sales}
+                      columns={[
+                        { title: "Amount USD", dataIndex: "amount_usd", key: "amount_usd", render: formatNumber },
+                        { title: "Amount LBP", dataIndex: "amount_lbp", key: "amount_lbp", render: formatNumber },
+                        {
+                          title: "Action",
+                          key: "action",
+                          render: (_, record) => (
+                            <Popconfirm title="Sure to delete?" onConfirm={() => handleDelete("sale", record.key)}>
+                              <Button type="link">Delete</Button>
+                            </Popconfirm>
+                          ),
+                        },
+                      ]}
+                      rowKey="key"
+                    />
+                  </Card>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Card title="Withdrawals">
+                    <Form
+                      onFinish={(values) => addTransaction("withdrawal", { ...values, key: Date.now() })}
+                    >
+                      <Form.Item
+                        name="amount_usd"
+                        label="Amount USD"
+                        rules={[{ required: true, message: "Please input amount in USD!" }]}
+                      >
+                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                      </Form.Item>
+                      <Form.Item
+                        name="amount_lbp"
+                        label="Amount LBP"
+                        rules={[{ required: true, message: "Please input amount in LBP!" }]}
+                      >
+                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                      </Form.Item>
+                      <Form.Item>
+                        <Button type="primary" htmlType="submit">
+                          Add Withdrawal
+                        </Button>
+                      </Form.Item>
+                    </Form>
+                    <Table
+                      dataSource={withdrawals}
+                      columns={[
+                        { title: "Amount USD", dataIndex: "amount_usd", key: "amount_usd", render: formatNumber },
+                        { title: "Amount LBP", dataIndex: "amount_lbp", key: "amount_lbp", render: formatNumber },
+                        {
+                          title: "Action",
+                          key: "action",
+                          render: (_, record) => (
+                            <Popconfirm title="Sure to delete?" onConfirm={() => handleDelete("withdrawal", record.key)}>
+                              <Button type="link">Delete</Button>
+                            </Popconfirm>
+                          ),
+                        },
+                      ]}
+                      rowKey="key"
+                    />
+                  </Card>
+                </Col>
+              </Row>
+              <Row gutter={16} style={{ marginTop: "20px" }}>
+                <Col xs={24} sm={12}>
+                  <Card title="Totals">
+                    <Typography.Title level={4}>
+                      Total in USD: {(totals.usd + totals.lbp / exchangeRate).toLocaleString()}
+                    </Typography.Title>
+                    <p>USD: {formatNumber(totals.usd)}</p>
+                    <p>LBP: {formatNumber(totals.lbp)}</p>
+                    <Form.Item label="Exchange Rate" style={{ marginTop: "10px" }}>
+                      <InputNumber
+                        prefix="LBP"
+                        formatter={formatNumber}
+                        defaultValue={DEFAULT_EXCHANGE_RATE}
+                        onChange={(value) => setExchangeRate(value)}
+                        style={{ width: "100%" }}
                       />
-                    </Col>
-                    <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
-                      <Payments
-                        addPayment={addPayment}
-                        selectedUser={selectedUser}
-                      />
-                    </Col>
-                  </Row>
-                  <Row gutter={16} style={{ marginTop: "20px" }}>
-                    <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
-                      <Sales addSale={addSale} selectedUser={selectedUser} />
-                    </Col>
-                    <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
-                      <Daniel
-                        addWithdrawal={addWithdrawal}
-                        selectedUser={selectedUser}
-                      />
-                    </Col>
-                  </Row>
-                  <Row gutter={16}>
-                    <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
-                      <TotalsCard
-                        title="Totals Before Daniel"
-                        totals={totals.beforeDaniel}
-                        exchangeRate={exchangeRate}
-                        setExchangeRate={setExchangeRate}
-                        calculateTotalInUSD={calculateTotalInUSD}
-                      />
-                    </Col>
-                    <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
-                      <TotalsCard
-                        title="Totals After Daniel"
-                        totals={totals.afterDaniel}
-                        exchangeRate={exchangeRate}
-                        setExchangeRate={setExchangeRate}
-                        calculateTotalInUSD={calculateTotalInUSD}
-                        difference={difference}
-                      />
-                    </Col>
-                  </Row>
-                  <Row
-                    gutter={16}
-                    style={{ marginTop: "20px", textAlign: "center" }}
-                  >
-                    <Col xs={24} span={24} type="flex" align="middle">
-                      <ClosingBalanceForm
-                        closingBalances={closingBalances}
-                        setClosingBalances={handleClosingBalancesChange}
-                        exchangeRate={exchangeRate}
-                        title="Confirm Closing"
-                        difference={difference}
-                        users={users}
-                        setSelectedUser={setSelectedUser}
-                        manualDateEnabled={manualDateEnabled}
-                        missingDates={missingDates}
-                        setSelectedDate={setSelectedDate}
-                        handleSubmit={handleSubmit}
-                      />
-                    </Col>
-                  </Row>
-                </>
-              )}
+                    </Form.Item>
+                  </Card>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Card title="Closing Balance">
+                    <Form>
+                      <Form.Item label="Closing Balance USD">
+                        <InputNumber
+                          min={0}
+                          value={closingBalances.usd}
+                          onChange={(value) => handleClosingBalancesChange("usd", value)}
+                          style={{ width: "100%" }}
+                        />
+                      </Form.Item>
+                      <Form.Item label="Closing Balance LBP">
+                        <InputNumber
+                          min={0}
+                          value={closingBalances.lbp}
+                          onChange={(value) => handleClosingBalancesChange("lbp", value)}
+                          style={{ width: "100%" }}
+                        />
+                      </Form.Item>
+                      <Typography.Text>
+                        Total in USD: {(closingBalances.usd + closingBalances.lbp / exchangeRate).toLocaleString()}
+                      </Typography.Text>
+                      <Divider />
+                      <Form.Item
+                        name="closing_employee"
+                        label="Select Closing Employee"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please select an employee!",
+                          },
+                        ]}
+                      >
+                        <Select
+                          placeholder="Select an employee"
+                          onChange={(value) => setSelectedUser(value)}
+                        >
+                          {users.map((user) => (
+                            <Option key={user.id} value={user.id}>
+                              {user.name}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                      {manualDateEnabled && (
+                        <Form.Item
+                          name="closing_date"
+                          label="Select Closing Date"
+                          rules={[
+                            {
+                              required: true,
+                              message: "Please select a date!",
+                            },
+                          ]}
+                        >
+                          <DatePicker
+                            format="YYYY-MM-DD"
+                            onChange={(date) => setSelectedDate(date)}
+                          />
+                        </Form.Item>
+                      )}
+                      <Form.Item>
+                        <Button type="primary" onClick={handleSubmit}>
+                          Close Today
+                        </Button>
+                      </Form.Item>
+                    </Form>
+                  </Card>
+                </Col>
+              </Row>
               <Modal
                 title="Confirm Closing"
-                open={isModalVisible}
+                visible={isModalVisible}
                 onOk={handleConfirmSubmit}
                 onCancel={() => setIsModalVisible(false)}
               >
@@ -502,12 +576,12 @@ const MainScreen = ({ user }) => {
                 <p>Credits: {credits.length}</p>
                 <p>Payments: {payments.length}</p>
                 <p>Sales: {sales.length}</p>
-                <p>Daniel: {daniel.length}</p>
+                <p>Withdrawals: {withdrawals.length}</p>
               </Modal>
             </div>
-          </Item>
+          </Tabs.TabPane>
           {user.role === "admin" && (
-            <Item tab="Admin Dashboard" key="2">
+            <Tabs.TabPane tab="Admin Dashboard" key="2">
               <div style={{ marginTop: "40px" }}>
                 <h2>Admin Dashboard</h2>
                 <p>Switch to enable user to enter date manually</p>
@@ -520,13 +594,8 @@ const MainScreen = ({ user }) => {
                   />
                 </div>
                 <Divider />
-                <Typography.Title level={3}>Transaction Table</Typography.Title>
-                <TransactionTable
-                  selectedUser={selectedUser}
-                  openingBalance={openingBalances}
-                />
               </div>
-            </Item>
+            </Tabs.TabPane>
           )}
         </Tabs>
       </Content>

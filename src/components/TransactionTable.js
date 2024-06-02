@@ -39,7 +39,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
         .from("payments")
         .select("*")
         .eq("deduction_source", "daniel");
-      const { data: daniel, error: danielError } = await supabase
+      const { data: withdrawals, error: danielError } = await supabase
         .from("daniel")
         .select("*");
 
@@ -53,7 +53,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
 
       const transactions = [
         ...payments.map((item) => ({ ...item, type: "Payment" })),
-        ...daniel.map((item) => ({ ...item, type: "Daniel" })),
+        ...withdrawals.map((item) => ({ ...item, type: "Withdrawal" })),
       ];
 
       transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -61,11 +61,11 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
       setTransactions(transactions);
 
       // Calculate balance
-      const totalDanielUSD = daniel.reduce(
+      const totalDanielUSD = withdrawals.reduce(
         (acc, item) => acc + item.amount_usd,
         0
       );
-      const totalDanielLBP = daniel.reduce(
+      const totalDanielLBP = withdrawals.reduce(
         (acc, item) => acc + item.amount_lbp,
         0
       );
@@ -206,7 +206,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
       align: "center",
     },
     {
-      title: "Withdrawal",
+      title: "Daniel",
       children: [
         {
           title: "USD",

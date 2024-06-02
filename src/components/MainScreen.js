@@ -22,7 +22,8 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+import Item from "antd/es/list/Item";
+import TransactionTable from "./TransactionTable";
 const { Content, Footer } = Layout;
 const { Option } = Select;
 
@@ -122,7 +123,6 @@ const MainScreen = ({ user }) => {
     );
     const totalSalesUSD = sales.reduce((acc, sale) => acc + sale.amount_usd, 0);
     const totalSalesLBP = sales.reduce((acc, sale) => acc + sale.amount_lbp, 0);
-
     const totalWithdrawalsUSD = withdrawals.reduce(
       (acc, withdrawal) => acc + withdrawal.amount_usd,
       0
@@ -226,6 +226,7 @@ const MainScreen = ({ user }) => {
 
       // Insert credits
       for (const credit of credits) {
+        console.log(credit, "credit");
         const { error: creditError } = await supabase
           .from("credits")
           .insert([{ ...credit, date, user_id: selectedUser }]);
@@ -283,12 +284,30 @@ const MainScreen = ({ user }) => {
     }
   };
 
+  const calculateTotalsAfterDaniel = () => {
+    const closingBalanceInUSD =
+      closingBalances.usd + closingBalances.lbp / exchangeRate;
+    const totalsBeforeDanielInUSD = totals.usd + totals.lbp / exchangeRate;
+
+    const totalsAfterDanielUSD = totalsBeforeDanielInUSD - closingBalanceInUSD;
+
+    return {
+      closingBalanceInUSD,
+      totalsAfterDanielUSD,
+    };
+  };
+
+  const { closingBalanceInUSD, totalsAfterDanielUSD } =
+    calculateTotalsAfterDaniel();
+
+  const isClosingAllowed = Math.abs(totalsAfterDanielUSD) <= 2;
+
   return (
     <Layout className="layout">
       <ToastContainer />
       <Content style={{ padding: "0 50px" }}>
         <Tabs defaultActiveKey="1">
-          <Tabs.TabPane tab="Main View" key="1">
+          <Item tab="Main View" key="1">
             <div className="site-layout-content">
               <h1>Financial Tracking App</h1>
               <Row gutter={16}>
@@ -483,10 +502,8 @@ const MainScreen = ({ user }) => {
                           },
                         ]}
                       >
-                        <Select placeholder="Select source">
-                          <Option value="current_closing">
-                            Current Closing
-                          </Option>
+                        <Select placeholder="Select deduction source">
+                          <Option value="current">Current Closing</Option>
                           <Option value="daniel">Daniel</Option>
                         </Select>
                       </Form.Item>
@@ -660,7 +677,7 @@ const MainScreen = ({ user }) => {
                       </Form.Item>
                       <Form.Item>
                         <Button type="primary" htmlType="submit">
-                          Add Withdrawal
+                          Add Withdrawal (Daniel)
                         </Button>
                       </Form.Item>
                     </Form>
@@ -730,6 +747,7 @@ const MainScreen = ({ user }) => {
                     <Form>
                       <Form.Item label="Closing Balance USD">
                         <InputNumber
+                          formatter={formatNumber}
                           min={0}
                           value={closingBalances.usd}
                           onChange={(value) =>
@@ -741,6 +759,7 @@ const MainScreen = ({ user }) => {
                       <Form.Item label="Closing Balance LBP">
                         <InputNumber
                           min={0}
+                          formatter={formatNumber}
                           value={closingBalances.lbp}
                           onChange={(value) =>
                             handleClosingBalancesChange("lbp", value)
@@ -749,11 +768,12 @@ const MainScreen = ({ user }) => {
                         />
                       </Form.Item>
                       <Typography.Text>
-                        Total in USD:{" "}
-                        {(
-                          closingBalances.usd +
-                          closingBalances.lbp / exchangeRate
-                        ).toLocaleString()}
+                        Total in USD: {closingBalanceInUSD.toLocaleString()}
+                      </Typography.Text>
+                      <Divider />
+                      <Typography.Text>
+                        Your closing difference amount is :{" "}
+                        {totalsAfterDanielUSD.toLocaleString()}
                       </Typography.Text>
                       <Divider />
                       <Form.Item
@@ -795,9 +815,18 @@ const MainScreen = ({ user }) => {
                         </Form.Item>
                       )}
                       <Form.Item>
-                        <Button type="primary" onClick={handleSubmit}>
+                        <Button
+                          type="primary"
+                          onClick={handleSubmit}
+                          disabled={!isClosingAllowed}
+                        >
                           Close Today
                         </Button>
+                        {!isClosingAllowed && (
+                          <Typography.Text type="danger">
+                            Your closing amount is not correct greater than 2$
+                          </Typography.Text>
+                        )}
                       </Form.Item>
                     </Form>
                   </Card>
@@ -805,7 +834,7 @@ const MainScreen = ({ user }) => {
               </Row>
               <Modal
                 title="Confirm Closing"
-                visible={isModalVisible}
+                open={isModalVisible}
                 onOk={handleConfirmSubmit}
                 onCancel={() => setIsModalVisible(false)}
               >
@@ -817,9 +846,9 @@ const MainScreen = ({ user }) => {
                 <p>Withdrawals: {withdrawals.length}</p>
               </Modal>
             </div>
-          </Tabs.TabPane>
+          </Item>
           {user.role === "admin" && (
-            <Tabs.TabPane tab="Admin Dashboard" key="2">
+            <Item tab="Admin Dashboard" key="2">
               <div style={{ marginTop: "40px" }}>
                 <h2>Admin Dashboard</h2>
                 <p>Switch to enable user to enter date manually</p>
@@ -832,8 +861,9 @@ const MainScreen = ({ user }) => {
                   />
                 </div>
                 <Divider />
+                <TransactionTable />
               </div>
-            </Tabs.TabPane>
+            </Item>
           )}
         </Tabs>
       </Content>

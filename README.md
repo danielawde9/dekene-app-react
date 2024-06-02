@@ -2,7 +2,6 @@
 
 add unpaid credits col in the db of credits if they paid to be added to the total calculation  
 
-add deduction source 
 
 show kell shi add confirm button 
  
@@ -10,13 +9,19 @@ total before daniel - total after daniel = the input they added should be more o
 
 add how many dol 
 
-Warning: [antd: Tabs] `Tabs.TabPane` is deprecated. Please use `items` instead.
-
+transaction lal inset
+dont send key 
 Add frou3a 
 
 mobile view 
 
 manual date, disabled used dates, 
+cant select tomrrow 
+
+
+add deduction source 
+
+
 
 ## Pass
 

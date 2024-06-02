@@ -33,7 +33,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const DEFAULT_EXCHANGE_RATE = 90000;
 
-const formatNumber = (value) => new Intl.NumberFormat().format(value);
+const formatNumber = (value) => new Intl.NumberFormat().format(Math.abs(value));
 
 const MainScreen = ({ user }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -162,7 +162,12 @@ const MainScreen = ({ user }) => {
   const addTransaction = (type, transaction) => {
     switch (type) {
       case "credit":
-        setCredits((prev) => [...prev, transaction]);
+        console.log(transaction);
+        if (transaction.status) {
+          transaction.amount_lbp = -transaction.amount_lbp;
+          transaction.amount_usd = -transaction.amount_usd;
+          setCredits((prev) => [...prev, transaction]);
+        }
         break;
       case "payment":
         setPayments((prev) => [...prev, transaction]);
@@ -468,6 +473,7 @@ const MainScreen = ({ user }) => {
                               title: "Status",
                               dataIndex: "status",
                               key: "status",
+                              render: (status) => (status ? "Paid" : "Unpaid"),
                             },
                             {
                               title: "Action",

@@ -27,7 +27,6 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { formatDateToUTC, formatNumber } from "../utils/formatNumber";
 import Item from "antd/es/list/Item";
-import LineChartComponent from "./LineChartComponent";
 
 const { Content, Footer } = Layout;
 

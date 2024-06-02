@@ -72,7 +72,9 @@ const MainScreen = ({ user }) => {
       }
 
       // Fetch users
-      const { data: userData, error: userError } = await supabase.from("users").select("*");
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("*");
       if (userError) {
         toast.error("Error fetching users: " + userError.message);
       } else {
@@ -80,7 +82,10 @@ const MainScreen = ({ user }) => {
       }
 
       // Fetch settings
-      const { data: settingsData, error: settingsError } = await supabase.from("settings").select("*").limit(1);
+      const { data: settingsData, error: settingsError } = await supabase
+        .from("settings")
+        .select("*")
+        .limit(1);
       if (settingsError) {
         toast.error("Error fetching settings: " + settingsError.message);
       } else if (settingsData.length > 0) {
@@ -97,17 +102,48 @@ const MainScreen = ({ user }) => {
   }, [credits, payments, sales, withdrawals]);
 
   const calculateTotals = useCallback(() => {
-    const totalCreditsUSD = credits.reduce((acc, credit) => acc + credit.amount_usd, 0);
-    const totalCreditsLBP = credits.reduce((acc, credit) => acc + credit.amount_lbp, 0);
-    const totalPaymentsUSD = payments.reduce((acc, payment) => acc + payment.amount_usd, 0);
-    const totalPaymentsLBP = payments.reduce((acc, payment) => acc + payment.amount_lbp, 0);
+    const totalCreditsUSD = credits.reduce(
+      (acc, credit) => acc + credit.amount_usd,
+      0
+    );
+    const totalCreditsLBP = credits.reduce(
+      (acc, credit) => acc + credit.amount_lbp,
+      0
+    );
+    const totalPaymentsUSD = payments.reduce(
+      (acc, payment) =>
+        payment.deduction_source !== "daniel" ? acc + payment.amount_usd : acc,
+      0
+    );
+    const totalPaymentsLBP = payments.reduce(
+      (acc, payment) =>
+        payment.deduction_source !== "daniel" ? acc + payment.amount_lbp : acc,
+      0
+    );
     const totalSalesUSD = sales.reduce((acc, sale) => acc + sale.amount_usd, 0);
     const totalSalesLBP = sales.reduce((acc, sale) => acc + sale.amount_lbp, 0);
-    const totalWithdrawalsUSD = withdrawals.reduce((acc, withdrawal) => acc + withdrawal.amount_usd, 0);
-    const totalWithdrawalsLBP = withdrawals.reduce((acc, withdrawal) => acc + withdrawal.amount_lbp, 0);
 
-    const netUSD = openingBalances.usd + totalSalesUSD - totalCreditsUSD - totalPaymentsUSD - totalWithdrawalsUSD;
-    const netLBP = openingBalances.lbp + totalSalesLBP - totalCreditsLBP - totalPaymentsLBP - totalWithdrawalsLBP;
+    const totalWithdrawalsUSD = withdrawals.reduce(
+      (acc, withdrawal) => acc + withdrawal.amount_usd,
+      0
+    );
+    const totalWithdrawalsLBP = withdrawals.reduce(
+      (acc, withdrawal) => acc + withdrawal.amount_lbp,
+      0
+    );
+
+    const netUSD =
+      openingBalances.usd +
+      totalSalesUSD -
+      totalCreditsUSD -
+      totalPaymentsUSD -
+      totalWithdrawalsUSD;
+    const netLBP =
+      openingBalances.lbp +
+      totalSalesLBP -
+      totalCreditsLBP -
+      totalPaymentsLBP -
+      totalWithdrawalsLBP;
 
     setTotals({ usd: netUSD, lbp: netLBP });
   }, [credits, payments, sales, withdrawals, openingBalances]);
@@ -190,25 +226,33 @@ const MainScreen = ({ user }) => {
 
       // Insert credits
       for (const credit of credits) {
-        const { error: creditError } = await supabase.from("credits").insert([{ ...credit, date, user_id: selectedUser }]);
+        const { error: creditError } = await supabase
+          .from("credits")
+          .insert([{ ...credit, date, user_id: selectedUser }]);
         if (creditError) throw creditError;
       }
 
       // Insert payments
       for (const payment of payments) {
-        const { error: paymentError } = await supabase.from("payments").insert([{ ...payment, date, user_id: selectedUser }]);
+        const { error: paymentError } = await supabase
+          .from("payments")
+          .insert([{ ...payment, date, user_id: selectedUser }]);
         if (paymentError) throw paymentError;
       }
 
       // Insert sales
       for (const sale of sales) {
-        const { error: saleError } = await supabase.from("sales").insert([{ ...sale, date, user_id: selectedUser }]);
+        const { error: saleError } = await supabase
+          .from("sales")
+          .insert([{ ...sale, date, user_id: selectedUser }]);
         if (saleError) throw saleError;
       }
 
       // Insert withdrawals
       for (const withdrawal of withdrawals) {
-        const { error: withdrawalError } = await supabase.from("withdrawals").insert([{ ...withdrawal, date, user_id: selectedUser }]);
+        const { error: withdrawalError } = await supabase
+          .from("daniel")
+          .insert([{ ...withdrawal, date, user_id: selectedUser }]);
         if (withdrawalError) throw withdrawalError;
       }
 
@@ -267,35 +311,60 @@ const MainScreen = ({ user }) => {
                       Closing LBP: {formatNumber(openingBalances.lbp)}
                     </Typography.Title>
                     <Typography.Text>
-                      Please ensure that the amount of money currently available matches the amount displayed. If they match, kindly click "confirm" to continue.
+                      Please ensure that the amount of money currently available
+                      matches the amount displayed. If they match, kindly click
+                      "confirm" to continue.
                     </Typography.Text>
                   </Card>
                 </Col>
               </Row>
-              <Row gutter={16} style={{ marginTop: "20px" }}>  
+              <Row gutter={16} style={{ marginTop: "20px" }}>
                 <Col xs={24} sm={12}>
                   <Card title="Credits">
                     <Form
-                      onFinish={(values) => addTransaction("credit", { ...values, key: Date.now() })}
+                      onFinish={(values) =>
+                        addTransaction("credit", { ...values, key: Date.now() })
+                      }
                     >
                       <Form.Item
                         name="amount_usd"
                         label="Amount USD"
-                        rules={[{ required: true, message: "Please input amount in USD!" }]}
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input amount in USD!",
+                          },
+                        ]}
                       >
-                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                        <InputNumber
+                          formatter={formatNumber}
+                          style={{ width: "100%" }}
+                        />
                       </Form.Item>
                       <Form.Item
                         name="amount_lbp"
                         label="Amount LBP"
-                        rules={[{ required: true, message: "Please input amount in LBP!" }]}
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input amount in LBP!",
+                          },
+                        ]}
                       >
-                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                        <InputNumber
+                          formatter={formatNumber}
+                          style={{ width: "100%" }}
+                        />
                       </Form.Item>
                       <Form.Item
                         name="person"
                         label="Person"
-                        rules={[{ required: true, message: "Please input the person!" }]}
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input the person!",
+                          },
+                        ]}
                       >
                         <Input />
                       </Form.Item>
@@ -308,14 +377,29 @@ const MainScreen = ({ user }) => {
                     <Table
                       dataSource={credits}
                       columns={[
-                        { title: "Amount USD", dataIndex: "amount_usd", key: "amount_usd", render: formatNumber },
-                        { title: "Amount LBP", dataIndex: "amount_lbp", key: "amount_lbp", render: formatNumber },
+                        {
+                          title: "Amount USD",
+                          dataIndex: "amount_usd",
+                          key: "amount_usd",
+                          render: formatNumber,
+                        },
+                        {
+                          title: "Amount LBP",
+                          dataIndex: "amount_lbp",
+                          key: "amount_lbp",
+                          render: formatNumber,
+                        },
                         { title: "Person", dataIndex: "person", key: "person" },
                         {
                           title: "Action",
                           key: "action",
                           render: (_, record) => (
-                            <Popconfirm title="Sure to delete?" onConfirm={() => handleDelete("credit", record.key)}>
+                            <Popconfirm
+                              title="Sure to delete?"
+                              onConfirm={() =>
+                                handleDelete("credit", record.key)
+                              }
+                            >
                               <Button type="link">Delete</Button>
                             </Popconfirm>
                           ),
@@ -328,35 +412,83 @@ const MainScreen = ({ user }) => {
                 <Col xs={24} sm={12}>
                   <Card title="Payments">
                     <Form
-                      onFinish={(values) => addTransaction("payment", { ...values, key: Date.now() })}
+                      onFinish={(values) =>
+                        addTransaction("payment", {
+                          ...values,
+                          key: Date.now(),
+                        })
+                      }
                     >
                       <Form.Item
                         name="amount_usd"
                         label="Amount USD"
-                        rules={[{ required: true, message: "Please input amount in USD!" }]}
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input amount in USD!",
+                          },
+                        ]}
                       >
-                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                        <InputNumber
+                          formatter={formatNumber}
+                          style={{ width: "100%" }}
+                        />
                       </Form.Item>
                       <Form.Item
                         name="amount_lbp"
                         label="Amount LBP"
-                        rules={[{ required: true, message: "Please input amount in LBP!" }]}
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input amount in LBP!",
+                          },
+                        ]}
                       >
-                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                        <InputNumber
+                          formatter={formatNumber}
+                          style={{ width: "100%" }}
+                        />
                       </Form.Item>
                       <Form.Item
                         name="reference_number"
                         label="Reference Number"
-                        rules={[{ required: true, message: "Please input the reference number!" }]}
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input the reference number!",
+                          },
+                        ]}
                       >
                         <Input />
                       </Form.Item>
                       <Form.Item
                         name="cause"
                         label="Cause"
-                        rules={[{ required: true, message: "Please input the cause!" }]}
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input the cause!",
+                          },
+                        ]}
                       >
                         <Input />
+                      </Form.Item>
+                      <Form.Item
+                        name="deduction_source"
+                        label="Deduction Source"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please select the deduction source!",
+                          },
+                        ]}
+                      >
+                        <Select placeholder="Select source">
+                          <Option value="current_closing">
+                            Current Closing
+                          </Option>
+                          <Option value="daniel">Daniel</Option>
+                        </Select>
                       </Form.Item>
                       <Form.Item>
                         <Button type="primary" htmlType="submit">
@@ -367,15 +499,39 @@ const MainScreen = ({ user }) => {
                     <Table
                       dataSource={payments}
                       columns={[
-                        { title: "Amount USD", dataIndex: "amount_usd", key: "amount_usd", render: formatNumber },
-                        { title: "Amount LBP", dataIndex: "amount_lbp", key: "amount_lbp", render: formatNumber },
-                        { title: "Reference Number", dataIndex: "reference_number", key: "reference_number" },
+                        {
+                          title: "Amount USD",
+                          dataIndex: "amount_usd",
+                          key: "amount_usd",
+                          render: formatNumber,
+                        },
+                        {
+                          title: "Amount LBP",
+                          dataIndex: "amount_lbp",
+                          key: "amount_lbp",
+                          render: formatNumber,
+                        },
+                        {
+                          title: "Reference Number",
+                          dataIndex: "reference_number",
+                          key: "reference_number",
+                        },
                         { title: "Cause", dataIndex: "cause", key: "cause" },
+                        {
+                          title: "Deduction Source",
+                          dataIndex: "deduction_source",
+                          key: "deduction_source",
+                        },
                         {
                           title: "Action",
                           key: "action",
                           render: (_, record) => (
-                            <Popconfirm title="Sure to delete?" onConfirm={() => handleDelete("payment", record.key)}>
+                            <Popconfirm
+                              title="Sure to delete?"
+                              onConfirm={() =>
+                                handleDelete("payment", record.key)
+                              }
+                            >
                               <Button type="link">Delete</Button>
                             </Popconfirm>
                           ),
@@ -390,21 +546,39 @@ const MainScreen = ({ user }) => {
                 <Col xs={24} sm={12}>
                   <Card title="Sales">
                     <Form
-                      onFinish={(values) => addTransaction("sale", { ...values, key: Date.now() })}
+                      onFinish={(values) =>
+                        addTransaction("sale", { ...values, key: Date.now() })
+                      }
                     >
                       <Form.Item
                         name="amount_usd"
                         label="Amount USD"
-                        rules={[{ required: true, message: "Please input amount in USD!" }]}
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input amount in USD!",
+                          },
+                        ]}
                       >
-                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                        <InputNumber
+                          formatter={formatNumber}
+                          style={{ width: "100%" }}
+                        />
                       </Form.Item>
                       <Form.Item
                         name="amount_lbp"
                         label="Amount LBP"
-                        rules={[{ required: true, message: "Please input amount in LBP!" }]}
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input amount in LBP!",
+                          },
+                        ]}
                       >
-                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                        <InputNumber
+                          formatter={formatNumber}
+                          style={{ width: "100%" }}
+                        />
                       </Form.Item>
                       <Form.Item>
                         <Button type="primary" htmlType="submit">
@@ -415,13 +589,26 @@ const MainScreen = ({ user }) => {
                     <Table
                       dataSource={sales}
                       columns={[
-                        { title: "Amount USD", dataIndex: "amount_usd", key: "amount_usd", render: formatNumber },
-                        { title: "Amount LBP", dataIndex: "amount_lbp", key: "amount_lbp", render: formatNumber },
+                        {
+                          title: "Amount USD",
+                          dataIndex: "amount_usd",
+                          key: "amount_usd",
+                          render: formatNumber,
+                        },
+                        {
+                          title: "Amount LBP",
+                          dataIndex: "amount_lbp",
+                          key: "amount_lbp",
+                          render: formatNumber,
+                        },
                         {
                           title: "Action",
                           key: "action",
                           render: (_, record) => (
-                            <Popconfirm title="Sure to delete?" onConfirm={() => handleDelete("sale", record.key)}>
+                            <Popconfirm
+                              title="Sure to delete?"
+                              onConfirm={() => handleDelete("sale", record.key)}
+                            >
                               <Button type="link">Delete</Button>
                             </Popconfirm>
                           ),
@@ -434,21 +621,42 @@ const MainScreen = ({ user }) => {
                 <Col xs={24} sm={12}>
                   <Card title="Withdrawals">
                     <Form
-                      onFinish={(values) => addTransaction("withdrawal", { ...values, key: Date.now() })}
+                      onFinish={(values) =>
+                        addTransaction("withdrawal", {
+                          ...values,
+                          key: Date.now(),
+                        })
+                      }
                     >
                       <Form.Item
                         name="amount_usd"
                         label="Amount USD"
-                        rules={[{ required: true, message: "Please input amount in USD!" }]}
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input amount in USD!",
+                          },
+                        ]}
                       >
-                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                        <InputNumber
+                          formatter={formatNumber}
+                          style={{ width: "100%" }}
+                        />
                       </Form.Item>
                       <Form.Item
                         name="amount_lbp"
                         label="Amount LBP"
-                        rules={[{ required: true, message: "Please input amount in LBP!" }]}
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input amount in LBP!",
+                          },
+                        ]}
                       >
-                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                        <InputNumber
+                          formatter={formatNumber}
+                          style={{ width: "100%" }}
+                        />
                       </Form.Item>
                       <Form.Item>
                         <Button type="primary" htmlType="submit">
@@ -459,13 +667,28 @@ const MainScreen = ({ user }) => {
                     <Table
                       dataSource={withdrawals}
                       columns={[
-                        { title: "Amount USD", dataIndex: "amount_usd", key: "amount_usd", render: formatNumber },
-                        { title: "Amount LBP", dataIndex: "amount_lbp", key: "amount_lbp", render: formatNumber },
+                        {
+                          title: "Amount USD",
+                          dataIndex: "amount_usd",
+                          key: "amount_usd",
+                          render: formatNumber,
+                        },
+                        {
+                          title: "Amount LBP",
+                          dataIndex: "amount_lbp",
+                          key: "amount_lbp",
+                          render: formatNumber,
+                        },
                         {
                           title: "Action",
                           key: "action",
                           render: (_, record) => (
-                            <Popconfirm title="Sure to delete?" onConfirm={() => handleDelete("withdrawal", record.key)}>
+                            <Popconfirm
+                              title="Sure to delete?"
+                              onConfirm={() =>
+                                handleDelete("withdrawal", record.key)
+                              }
+                            >
                               <Button type="link">Delete</Button>
                             </Popconfirm>
                           ),
@@ -480,11 +703,18 @@ const MainScreen = ({ user }) => {
                 <Col xs={24} sm={12}>
                   <Card title="Totals">
                     <Typography.Title level={4}>
-                      Total in USD: {(totals.usd + totals.lbp / exchangeRate).toLocaleString()}
+                      Total in USD:{" "}
+                      {(
+                        totals.usd +
+                        totals.lbp / exchangeRate
+                      ).toLocaleString()}
                     </Typography.Title>
                     <p>USD: {formatNumber(totals.usd)}</p>
                     <p>LBP: {formatNumber(totals.lbp)}</p>
-                    <Form.Item label="Exchange Rate" style={{ marginTop: "10px" }}>
+                    <Form.Item
+                      label="Exchange Rate"
+                      style={{ marginTop: "10px" }}
+                    >
                       <InputNumber
                         prefix="LBP"
                         formatter={formatNumber}
@@ -502,7 +732,9 @@ const MainScreen = ({ user }) => {
                         <InputNumber
                           min={0}
                           value={closingBalances.usd}
-                          onChange={(value) => handleClosingBalancesChange("usd", value)}
+                          onChange={(value) =>
+                            handleClosingBalancesChange("usd", value)
+                          }
                           style={{ width: "100%" }}
                         />
                       </Form.Item>
@@ -510,12 +742,18 @@ const MainScreen = ({ user }) => {
                         <InputNumber
                           min={0}
                           value={closingBalances.lbp}
-                          onChange={(value) => handleClosingBalancesChange("lbp", value)}
+                          onChange={(value) =>
+                            handleClosingBalancesChange("lbp", value)
+                          }
                           style={{ width: "100%" }}
                         />
                       </Form.Item>
                       <Typography.Text>
-                        Total in USD: {(closingBalances.usd + closingBalances.lbp / exchangeRate).toLocaleString()}
+                        Total in USD:{" "}
+                        {(
+                          closingBalances.usd +
+                          closingBalances.lbp / exchangeRate
+                        ).toLocaleString()}
                       </Typography.Text>
                       <Divider />
                       <Form.Item

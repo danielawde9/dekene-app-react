@@ -34,70 +34,82 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
   const [convertedAmount, setConvertedAmount] = useState(null);
 
   useEffect(() => {
-    async function fetchTransactions() {
-      const { data: payments, error: paymentError } = await supabase
-        .from("payments")
-        .select("*")
-        .eq("deduction_source", "daniel");
-      const { data: withdrawals, error: danielError } = await supabase
-        .from("daniel")
-        .select("*");
-
-      if (paymentError || danielError) {
-        console.error(
-          "Error fetching transactions:",
-          paymentError || danielError
-        );
-        return;
-      }
-
-      const transactions = [
-        ...payments.map((item) => ({ ...item, type: "Payment" })),
-        ...withdrawals.map((item) => ({ ...item, type: "Withdrawal" })),
-      ];
-
-      transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-      setTransactions(transactions);
-
-      // Calculate balance
-      const totalDanielUSD = withdrawals.reduce(
-        (acc, item) => acc + item.amount_usd,
-        0
-      );
-      const totalDanielLBP = withdrawals.reduce(
-        (acc, item) => acc + item.amount_lbp,
-        0
-      );
-      const totalPaymentsUSD = payments.reduce(
-        (acc, item) => acc + item.amount_usd,
-        0
-      );
-      const totalPaymentsLBP = payments.reduce(
-        (acc, item) => acc + item.amount_lbp,
-        0
-      );
-
-      setBalance({
-        usd: totalDanielUSD - totalPaymentsUSD,
-        lbp: totalDanielLBP - totalPaymentsLBP,
-      });
-
-      setIsLoading(false);
-    }
-
-    async function fetchDailyBalances() {
-      const { data, error } = await supabase.from("dailybalances").select("*");
-      if (error) {
-        toast.error("Error fetching daily balances: " + error.message);
-      } else {
-        setDailyBalances(data);
-      }
-    }
-
     fetchTransactions();
     fetchDailyBalances();
   }, []);
+
+  const fetchTransactions = async () => {
+    const { data: payments, error: paymentError } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("deduction_source", "daniel");
+    const { data: withdrawals, error: danielError } = await supabase
+      .from("daniel")
+      .select("*");
+    const { data: conversions, error: conversionError } = await supabase
+      .from("conversions")
+      .select("*");
+
+    if (paymentError || danielError || conversionError) {
+      console.error(
+        "Error fetching transactions:",
+        paymentError || danielError || conversionError
+      );
+      return;
+    }
+
+    const transactions = [
+      ...payments.map((item) => ({ ...item, type: "Payment" })),
+      ...withdrawals.map((item) => ({ ...item, type: "Withdrawal" })),
+      ...conversions.map((item) => ({ ...item, type: "Conversion" })),
+    ];
+
+    transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    setTransactions(transactions);
+
+    // Calculate balance
+    const totalDanielUSD = withdrawals.reduce(
+      (acc, item) => acc + item.amount_usd,
+      0
+    );
+    const totalDanielLBP = withdrawals.reduce(
+      (acc, item) => acc + item.amount_lbp,
+      0
+    );
+    const totalPaymentsUSD = payments.reduce(
+      (acc, item) => acc + item.amount_usd,
+      0
+    );
+    const totalPaymentsLBP = payments.reduce(
+      (acc, item) => acc + item.amount_lbp,
+      0
+    );
+    const totalConversionsUSD = conversions.reduce(
+      (acc, item) => acc + (item.original_currency === "USD" ? -item.amount_usd : item.amount_usd),
+      0
+    );
+    const totalConversionsLBP = conversions.reduce(
+      (acc, item) => acc + (item.original_currency === "LBP" ? -item.amount_lbp : item.amount_lbp),
+      0
+    );
+
+    setBalance({
+      usd: totalDanielUSD - totalPaymentsUSD + totalConversionsUSD,
+      lbp: totalDanielLBP - totalPaymentsLBP + totalConversionsLBP,
+    });
+
+    setIsLoading(false);
+  };
+
+  const fetchDailyBalances = async () => {
+    const { data, error } = await supabase.from("dailybalances").select("*");
+    if (error) {
+      toast.error("Error fetching daily balances: " + error.message);
+    } else {
+      setDailyBalances(data);
+    }
+  };
 
   const addTransaction = async (values, type) => {
     try {
@@ -168,20 +180,44 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
     }
   };
 
-  const handleConvert = (values) => {
-    const convertedValues =
+  const handleConvert = async (values) => {
+    const convertedTransaction =
       conversionType === "usd_to_lbp"
         ? {
-            ...values,
+            date: values.date,
+            amount_usd: values.amount_usd,
             amount_lbp: values.amount_usd * exchangeRate,
-            exchange_rate: exchangeRate,
+            type: "Conversion",
+            user_id: adminUserId,
+            original_currency: "USD",
+            converted_currency: "LBP",
           }
         : {
-            ...values,
+            date: values.date,
             amount_usd: values.amount_lbp / exchangeRate,
-            exchange_rate: exchangeRate,
+            amount_lbp: values.amount_lbp,
+            type: "Conversion",
+            user_id: adminUserId,
+            original_currency: "LBP",
+            converted_currency: "USD",
           };
-    addTransaction(convertedValues, "Withdrawal");
+
+    try {
+      const { error } = await supabase.from("conversions").insert([convertedTransaction]);
+
+      if (error) {
+        toast.error("Error adding conversion: " + error.message);
+      } else {
+        setTransactions([convertedTransaction, ...transactions]);
+        toast.success("Conversion added successfully!");
+        setConvertedAmount(null);
+        setIsConvertModalVisible(false);
+        convertForm.resetFields();
+        fetchTransactions();
+      }
+    } catch (error) {
+      toast.error("Error adding conversion: " + error.message);
+    }
   };
 
   const handleAmountChange = (value) => {
@@ -206,6 +242,18 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
       align: "center",
     },
     {
+      title: "Original Currency",
+      dataIndex: "original_currency",
+      key: "original_currency",
+      align: "center",
+    },
+    {
+      title: "Converted Currency",
+      dataIndex: "converted_currency",
+      key: "converted_currency",
+      align: "center",
+    },
+    {
       title: "Daniel",
       children: [
         {
@@ -213,7 +261,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
           dataIndex: "amount_usd",
           key: "withdrawal_usd",
           render: (text, record) =>
-            record.type === "Withdrawal"
+            record.type === "Withdrawal" || record.type === "Conversion"
               ? formatNumber(record.amount_usd)
               : null,
           align: "center",
@@ -223,7 +271,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
           dataIndex: "amount_lbp",
           key: "withdrawal_lbp",
           render: (text, record) =>
-            record.type === "Withdrawal"
+            record.type === "Withdrawal" || record.type === "Conversion"
               ? formatNumber(record.amount_lbp)
               : null,
           align: "center",
@@ -438,7 +486,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
               : `Converted Amount: ${formatNumber(convertedAmount)} USD`}
           </Typography.Title>
           <Form.Item
-            name="closing_date"
+            name="date"
             label="Select Closing Date"
             rules={[
               { required: true, message: "Please select a closing date!" },

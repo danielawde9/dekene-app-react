@@ -33,7 +33,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const DEFAULT_EXCHANGE_RATE = 90000;
 
-const formatNumber = (value) => new Intl.NumberFormat().format(Math.abs(value));
+const formatNumber = (value) => new Intl.NumberFormat().format(value);
 
 const MainScreen = ({ user }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -48,7 +48,9 @@ const MainScreen = ({ user }) => {
   const [manualDateEnabled, setManualDateEnabled] = useState(false);
   const [selectedDate, setSelectedDate] = useState(currentDate);
   const [users, setUsers] = useState([]);
+  const [branches, setBranches] = useState([]); // State for branches
   const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedBranch, setSelectedBranch] = useState(0); // Default branch
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [unpaidCredits, setUnpaidCredits] = useState([]);
@@ -81,6 +83,16 @@ const MainScreen = ({ user }) => {
         toast.error("Error fetching users: " + userError.message);
       } else {
         setUsers(userData);
+      }
+
+      // Fetch branches
+      const { data: branchData, error: branchError } = await supabase
+        .from("branches")
+        .select("*");
+      if (branchError) {
+        toast.error("Error fetching branches: " + branchError.message);
+      } else {
+        setBranches(branchData);
       }
 
       // Fetch settings
@@ -235,6 +247,7 @@ const MainScreen = ({ user }) => {
             closing_usd,
             closing_lbp,
             user_id: selectedUser,
+            branch_id: selectedBranch,
           },
         ]);
 
@@ -244,7 +257,7 @@ const MainScreen = ({ user }) => {
       for (const credit of credits) {
         const { data, error: creditError } = await supabase
           .from("credits")
-          .upsert([{ ...credit, date, user_id: selectedUser }], {
+          .upsert([{ ...credit, date, user_id: selectedUser, branch_id: selectedBranch }], {
             onConflict: ["id"],
           });
         if (creditError) throw creditError;
@@ -254,7 +267,7 @@ const MainScreen = ({ user }) => {
       for (const payment of payments) {
         const { error: paymentError } = await supabase
           .from("payments")
-          .insert([{ ...payment, date, user_id: selectedUser }]);
+          .insert([{ ...payment, date, user_id: selectedUser, branch_id: selectedBranch }]);
         if (paymentError) throw paymentError;
       }
 
@@ -262,7 +275,7 @@ const MainScreen = ({ user }) => {
       for (const sale of sales) {
         const { error: saleError } = await supabase
           .from("sales")
-          .insert([{ ...sale, date, user_id: selectedUser }]);
+          .insert([{ ...sale, date, user_id: selectedUser, branch_id: selectedBranch }]);
         if (saleError) throw saleError;
       }
 
@@ -270,7 +283,7 @@ const MainScreen = ({ user }) => {
       for (const withdrawal of withdrawals) {
         const { error: withdrawalError } = await supabase
           .from("daniel")
-          .insert([{ ...withdrawal, date, user_id: selectedUser }]);
+          .insert([{ ...withdrawal, date, user_id: selectedUser, branch_id: selectedBranch }]);
         if (withdrawalError) throw withdrawalError;
       }
 
@@ -424,7 +437,9 @@ const MainScreen = ({ user }) => {
                               },
                             ]}
                           >
-                            <Input />
+                            <Input
+                              placeholder="Add a person"
+                            />
                           </Form.Item>
                           <Form.Item>
                             <Button type="primary" htmlType="submit">
@@ -851,6 +866,27 @@ const MainScreen = ({ user }) => {
                               style={{ width: "100%" }}
                             />
                           </Form.Item>
+                          <Form.Item
+                            name="branch_id"
+                            label="Branch"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please select a branch!",
+                              },
+                            ]}
+                          >
+                            <Select placeholder={
+                              "select a branch"
+                            } onChange={(value) => setSelectedBranch(value)}>
+
+                              {branches.map((branch) => (
+                                <Option key={branch.id} value={branch.id}>
+                                  {branch.name}
+                                </Option>
+                              ))}
+                            </Select>
+                          </Form.Item>
                           <Typography.Text>
                             Total in USD: {closingBalanceInUSD.toLocaleString()}
                           </Typography.Text>
@@ -859,7 +895,7 @@ const MainScreen = ({ user }) => {
                             style={{
                               color:
                                 totalsAfterDanielUSD.toLocaleString() < 2 &&
-                                totalsAfterDanielUSD.toLocaleString() >= 0
+                                  totalsAfterDanielUSD.toLocaleString() >= 0
                                   ? "green"
                                   : "red",
                             }}
@@ -903,7 +939,7 @@ const MainScreen = ({ user }) => {
                               <DatePicker
                                 format="YYYY-MM-DD"
                                 onChange={(date) => setSelectedDate(date)}
-                                // disabledDate={disableTomorrow}
+                              // disabledDate={disableTomorrow}
                               />
                             </Form.Item>
                           )}
@@ -958,7 +994,7 @@ const MainScreen = ({ user }) => {
                   />
                 </div>
                 <Divider />
-                <TransactionTable />
+                <TransactionTable adminUserId={user.id} exchangeRate={DEFAULT_EXCHANGE_RATE} />
               </div>
             </Item>
           )}

@@ -1,3 +1,4 @@
+// Import the necessary hooks and components
 import React, { useState, useEffect } from "react";
 import {
   Table,
@@ -20,23 +21,33 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const { Option } = Select;
 
-const TransactionTable = ({ adminUserId, openingBalance }) => {
+const TransactionTable = ({ adminUserId, exchangeRate }) => {
   const [transactions, setTransactions] = useState([]);
   const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
   const [isConvertModalVisible, setIsConvertModalVisible] = useState(false);
   const [dailyBalances, setDailyBalances] = useState([]);
+  const [branches, setBranches] = useState([]); // State for branches
   const [form] = Form.useForm();
   const [convertForm] = Form.useForm();
   const [balance, setBalance] = useState({ usd: 0, lbp: 0 });
   const [isLoading, setIsLoading] = useState(true);
-  const [exchangeRate, setExchangeRate] = useState(90000); // Default exchange rate
   const [conversionType, setConversionType] = useState("usd_to_lbp"); // Default conversion type
   const [convertedAmount, setConvertedAmount] = useState(null);
 
   useEffect(() => {
     fetchTransactions();
     fetchDailyBalances();
+    fetchBranches(); // Fetch branches on mount
   }, []);
+
+  const fetchBranches = async () => {
+    const { data, error } = await supabase.from("branches").select("*");
+    if (error) {
+      console.error("Error fetching branches:", error);
+    } else {
+      setBranches(data);
+    }
+  };
 
   const fetchTransactions = async () => {
     const { data: payments, error: paymentError } = await supabase
@@ -86,11 +97,13 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
       0
     );
     const totalConversionsUSD = conversions.reduce(
-      (acc, item) => acc + (item.original_currency === "USD" ? -item.amount_usd : item.amount_usd),
+      (acc, item) =>
+        acc + (item.original_currency === "USD" ? -item.amount_usd : item.amount_usd),
       0
     );
     const totalConversionsLBP = conversions.reduce(
-      (acc, item) => acc + (item.original_currency === "LBP" ? -item.amount_lbp : item.amount_lbp),
+      (acc, item) =>
+        acc + (item.original_currency === "LBP" ? -item.amount_lbp : item.amount_lbp),
       0
     );
 
@@ -118,6 +131,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
         date: values.date,
         type,
         user_id: adminUserId,
+        branch_id: values.branch_id || 0, // Add branch_id to the transaction
       };
 
       const { error } = await supabase
@@ -192,6 +206,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
           user_id: adminUserId,
           original_currency: "USD",
           converted_currency: "LBP",
+          branch_id: values.branch_id || 0, // Add branch_id to the conversion transaction
         }
         : {
           date: values.date,
@@ -202,6 +217,7 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
           user_id: adminUserId,
           original_currency: "LBP",
           converted_currency: "USD",
+          branch_id: values.branch_id || 0, // Add branch_id to the conversion transaction
         };
 
     try {
@@ -420,6 +436,19 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
           >
             <Input />
           </Form.Item>
+          <Form.Item
+            name="branch_id"
+            label="Branch"
+            rules={[{ required: true, message: "Please select a branch!" }]}
+          >
+            <Select placeholder="Select a branch">
+              {branches.map((branch) => (
+                <Option key={branch.id} value={branch.id}>
+                  {branch.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit">
               Add Payment
@@ -474,10 +503,9 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
             name="exchange_rate"
             label="Exchange Rate"
             rules={[{ required: true, message: "Please input exchange rate!" }]}
+            initialValue={exchangeRate}
           >
             <InputNumber
-              defaultValue={exchangeRate}
-              onChange={(value) => setExchangeRate(value)}
               formatter={(value) => formatNumber(value)}
               style={{ width: "100%" }}
             />
@@ -498,6 +526,19 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
               {dailyBalances.map((balance) => (
                 <Option key={balance.id} value={balance.date}>
                   {balance.date}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="branch_id"
+            label="Branch"
+            rules={[{ required: true, message: "Please select a branch!" }]}
+          >
+            <Select placeholder="Select a branch">
+              {branches.map((branch) => (
+                <Option key={branch.id} value={branch.id}>
+                  {branch.name}
                 </Option>
               ))}
             </Select>

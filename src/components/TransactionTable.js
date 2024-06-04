@@ -184,23 +184,25 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
     const convertedTransaction =
       conversionType === "usd_to_lbp"
         ? {
-            date: values.date,
-            amount_usd: values.amount_usd,
-            amount_lbp: values.amount_usd * exchangeRate,
-            type: "Conversion",
-            user_id: adminUserId,
-            original_currency: "USD",
-            converted_currency: "LBP",
-          }
+          date: values.date,
+          amount_usd: values.amount_usd,
+          amount_lbp: values.amount_usd * exchangeRate,
+          exchange_rate: exchangeRate,
+          type: "Conversion",
+          user_id: adminUserId,
+          original_currency: "USD",
+          converted_currency: "LBP",
+        }
         : {
-            date: values.date,
-            amount_usd: values.amount_lbp / exchangeRate,
-            amount_lbp: values.amount_lbp,
-            type: "Conversion",
-            user_id: adminUserId,
-            original_currency: "LBP",
-            converted_currency: "USD",
-          };
+          date: values.date,
+          amount_usd: values.amount_lbp / exchangeRate,
+          amount_lbp: values.amount_lbp,
+          type: "Conversion",
+          exchange_rate: exchangeRate,
+          user_id: adminUserId,
+          original_currency: "LBP",
+          converted_currency: "USD",
+        };
 
     try {
       const { error } = await supabase.from("conversions").insert([convertedTransaction]);
@@ -487,9 +489,9 @@ const TransactionTable = ({ adminUserId, openingBalance }) => {
           </Typography.Title>
           <Form.Item
             name="date"
-            label="Select Closing Date"
+            label="Select Conversion Date"
             rules={[
-              { required: true, message: "Please select a closing date!" },
+              { required: true, message: "Please select a conversion date!" },
             ]}
           >
             <Select>

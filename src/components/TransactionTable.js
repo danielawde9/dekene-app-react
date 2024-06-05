@@ -1,4 +1,3 @@
-// Import the necessary hooks and components
 import React, { useState, useEffect } from "react";
 import {
   Table,
@@ -10,6 +9,8 @@ import {
   Card,
   Typography,
   Input,
+  Row,
+  Col,
 } from "antd";
 import { createClient } from "@supabase/supabase-js";
 import { formatNumber } from "../utils/formatNumber";
@@ -22,10 +23,15 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const { Option } = Select;
 
 const TransactionTable = ({ adminUserId, exchangeRate }) => {
-  const [transactions, setTransactions] = useState([]);
-  const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
   const [isConvertModalVisible, setIsConvertModalVisible] = useState(false);
+  const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
+  const [transactions, setTransactions] = useState([]);
+  const [credits, setCredits] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [dailyBalances, setDailyBalances] = useState([]);
+  const [sales, setSales] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]); // State for branches
   const [form] = Form.useForm();
   const [convertForm] = Form.useForm();
@@ -36,7 +42,12 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
 
   useEffect(() => {
     fetchTransactions();
+    fetchCredits();
+    fetchPayments();
     fetchDailyBalances();
+    fetchSales();
+    fetchWithdrawals();
+    fetchUsers();
     fetchBranches(); // Fetch branches on mount
   }, []);
 
@@ -46,6 +57,15 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
       console.error("Error fetching branches:", error);
     } else {
       setBranches(data);
+    }
+  };
+
+  const fetchUsers = async () => {
+    const { data, error } = await supabase.from("users").select("*");
+    if (error) {
+      console.error("Error fetching branches:", error);
+    } else {
+      setUsers(data);
     }
   };
 
@@ -115,12 +135,48 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
     setIsLoading(false);
   };
 
+  const fetchCredits = async () => {
+    const { data, error } = await supabase.from("credits").select("*");
+    if (error) {
+      toast.error("Error fetching credits: " + error.message);
+    } else {
+      setCredits(data);
+    }
+  };
+
+  const fetchPayments = async () => {
+    const { data, error } = await supabase.from("payments").select("*");
+    if (error) {
+      toast.error("Error fetching payments: " + error.message);
+    } else {
+      setPayments(data);
+    }
+  };
+
   const fetchDailyBalances = async () => {
     const { data, error } = await supabase.from("dailybalances").select("*");
     if (error) {
       toast.error("Error fetching daily balances: " + error.message);
     } else {
       setDailyBalances(data);
+    }
+  };
+
+  const fetchSales = async () => {
+    const { data, error } = await supabase.from("sales").select("*");
+    if (error) {
+      toast.error("Error fetching sales: " + error.message);
+    } else {
+      setSales(data);
+    }
+  };
+
+  const fetchWithdrawals = async () => {
+    const { data, error } = await supabase.from("daniel").select("*");
+    if (error) {
+      toast.error("Error fetching withdrawals: " + error.message);
+    } else {
+      setWithdrawals(data);
     }
   };
 
@@ -246,7 +302,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
     }
   };
 
-  const columns = [
+  const transactionsColumns = [
     {
       title: "Date",
       dataIndex: "date",
@@ -318,6 +374,16 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
       ],
     },
     {
+      title: "Branch",
+      dataIndex: "branch_id",
+      key: "branch_id",
+      render: (branchId) => {
+        const branch = branches.find((branch) => branch.id === branchId);
+        return branch ? branch.name : "N/A";
+      },
+      align: "center",
+    },
+    {
       title: "Action",
       key: "action",
       align: "center",
@@ -328,6 +394,317 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
       ),
     },
   ];
+
+  const paymentsColumns = [
+    {
+      title: "Date",
+      dataIndex: "date",
+      key: "date",
+      align: "center",
+    },
+    {
+      title: "Amount USD",
+      dataIndex: "amount_usd",
+      key: "amount_usd",
+      render: formatNumber,
+      align: "center",
+    },
+    {
+      title: "Amount LBP",
+      dataIndex: "amount_lbp",
+      key: "amount_lbp",
+      render: formatNumber,
+      align: "center",
+    },
+    {
+      title: "Cause",
+      dataIndex: "cause",
+      key: "cause",
+      align: "center",
+    },
+    {
+      title: "Deduction Source",
+      dataIndex: "deduction_source",
+      key: "deduction_source",
+      align: "center",
+    },
+    {
+      title: "Reference Number",
+      dataIndex: "reference_number",
+      key: "reference_number",
+      align: "center",
+    },
+    {
+      title: "Branch",
+      dataIndex: "branch_id",
+      key: "branch_id",
+      render: (branchId) => {
+        const branch = branches.find((branch) => branch.id === branchId);
+        return branch ? branch.name : "N/A";
+      },
+      align: "center",
+    },
+    {
+      title: "Action",
+      key: "action",
+      align: "center",
+      render: (text, record) => (
+        <Button type="link" onClick={() => handleDelete(record)}>
+          Delete
+        </Button>
+      ),
+    },
+  ];
+
+  const creditsColumns = [
+    {
+      title: "Date",
+      dataIndex: "date",
+      key: "date",
+      align: "center",
+    },
+    {
+      title: "Amount USD",
+      dataIndex: "amount_usd",
+      key: "amount_usd",
+      render: formatNumber,
+      align: "center",
+    },
+    {
+      title: "Amount LBP",
+      dataIndex: "amount_lbp",
+      key: "amount_lbp",
+      render: formatNumber,
+      align: "center",
+    },
+    {
+      title: "Person",
+      dataIndex: "person",
+      key: "person",
+      align: "center",
+    },
+    {
+      title: "Branch",
+      dataIndex: "branch_id",
+      key: "branch_id",
+      render: (branchId) => {
+        const branch = branches.find((branch) => branch.id === branchId);
+        return branch ? branch.name : "N/A";
+      },
+      align: "center",
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      render: (status) => (status ? "Paid" : "Unpaid"),
+      align: "center",
+    },
+    {
+      title: "Action",
+      key: "action",
+      align: "center",
+      render: (text, record) => (
+        <Button type="link" onClick={() => handleDelete(record)}>
+          Delete
+        </Button>
+      ),
+    },
+  ];
+
+  const dailyBalancesColumns = [
+    {
+      title: "Date",
+      dataIndex: "date",
+      key: "date",
+      align: "center",
+    },
+    {
+      title: "Opening USD",
+      dataIndex: "opening_usd",
+      key: "opening_usd",
+      render: formatNumber,
+      align: "center",
+    },
+    {
+      title: "Opening LBP",
+      dataIndex: "opening_lbp",
+      key: "opening_lbp",
+      render: formatNumber,
+      align: "center",
+    },
+    {
+      title: "Closing USD",
+      dataIndex: "closing_usd",
+      key: "closing_usd",
+      render: formatNumber,
+      align: "center",
+    },
+    {
+      title: "Closing LBP",
+      dataIndex: "closing_lbp",
+      key: "closing_lbp",
+      render: formatNumber,
+      align: "center",
+    },
+    {
+      title: "Paid Credits",
+      key: "paid_credits",
+      align: "center",
+      render: (_, record) => {
+        const paidCredits = credits.filter(
+          (credit) => credit.date === record.date && credit.status
+        );
+        return paidCredits.length
+          ? paidCredits.map((credit) => (
+            <div key={credit.id}>
+              <p>{`USD: ${formatNumber(credit.amount_usd)}`}</p>
+              <p>{`LBP: ${formatNumber(
+                credit.amount_lbp
+              )}`}</p>
+              <p>{`Person: ${credit.person}`}</p>
+            </div>
+          ))
+          : "None";
+      },
+    },
+    {
+      title: "Unpaid Credits",
+      key: "unpaid_credits",
+      align: "center",
+      render: (_, record) => {
+        const unpaidCredits = credits.filter(
+          (credit) => credit.date === record.date && !credit.status
+        );
+        return unpaidCredits.length
+          ? unpaidCredits.map((credit) => (
+            <div key={credit.id}>
+              <p>{`USD: ${formatNumber(credit.amount_usd)}`}</p>
+              <p>{`LBP: ${formatNumber(
+                credit.amount_lbp
+              )}`}</p>
+              <p>{`Person: ${credit.person}`}</p>
+            </div>
+          ))
+          : "None";
+      },
+    },
+    {
+      title: "Payments",
+      key: "payments",
+      align: "center",
+      render: (_, record) => {
+        const dailyPayments = payments.filter(
+          (payment) => payment.date === record.date
+        );
+        return dailyPayments.length > 0 ? "Click to + expand" : "None"
+      },
+    },
+    {
+      title: "Withdrawals (Daniel)",
+      key: "withdrawals",
+      align: "center",
+      render: (_, record) => {
+        const dailyWithdrawals = withdrawals.filter(
+          (withdrawal) => withdrawal.date === record.date
+        );
+        return dailyWithdrawals.length
+          ? dailyWithdrawals.map((withdrawal) => (
+
+            <div key={withdrawal.id}>
+              <p>{`USD: ${formatNumber(withdrawal.amount_usd)}`}</p>
+              <p>{`LBP: ${formatNumber(
+                withdrawal.amount_lbp
+              )}`}</p>
+            </div>
+          ))
+          : "None";
+      },
+    },
+    {
+      title: "User ID",
+      dataIndex: "user_id",
+      key: "user_id",
+      render: (userId) => {
+        const user = users.find((user) => user.id === userId);
+        return user ? user.name : "N/A";
+      },
+      align: "center",
+    },
+    {
+      title: "Branch",
+      dataIndex: "branch_id",
+      key: "branch_id",
+      render: (branchId) => {
+        const branch = branches.find((branch) => branch.id === branchId);
+        return branch ? branch.name : "N/A";
+      },
+      align: "center",
+    },
+  ];
+
+  const salesColumns = [
+    {
+      title: "Date",
+      dataIndex: "date",
+      key: "date",
+      align: "center",
+    },
+    {
+      title: "Amount USD",
+      dataIndex: "amount_usd",
+      key: "amount_usd",
+      render: formatNumber,
+      align: "center",
+    },
+    {
+      title: "Amount LBP",
+      dataIndex: "amount_lbp",
+      key: "amount_lbp",
+      render: formatNumber,
+      align: "center",
+    },
+    {
+      title: "Branch",
+      dataIndex: "branch_id",
+      key: "branch_id",
+      render: (branchId) => {
+        const branch = branches.find((branch) => branch.id === branchId);
+        return branch ? branch.name : "N/A";
+      },
+      align: "center",
+    },
+    {
+      title: "Action",
+      key: "action",
+      align: "center",
+      render: (text, record) => (
+        <Button type="link" onClick={() => handleDelete(record)}>
+          Delete
+        </Button>
+      ),
+    },
+  ];
+
+  const expandedRowRender = (record) => {
+    const dailyPayments = payments.filter(payment => payment.date === record.date);
+    return (
+      <Row gutter={[16, 16]}>
+        {dailyPayments.map((payment) => (
+          <Col key={payment.id} span={8}>
+            <Card title={`Payment ID: ${payment.id}`} bordered={false}>
+              <p>{`USD: ${formatNumber(payment.amount_usd)}`}</p>
+              <p>{`LBP: ${formatNumber(payment.amount_lbp)}`}</p>
+              <p>{`Ref: ${payment.reference_number}`}</p>
+              <p>{`Cause: ${payment.cause}`}</p>
+              <p>{`Deduction: ${payment.deduction_source}`}</p>
+            </Card>
+          </Col>
+        ))}
+      </Row>
+    );
+
+  };
 
   return (
     <>
@@ -360,18 +737,18 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         Convert LBP to USD
       </Button>
 
+      <Card title="Current Balance" style={{ marginTop: 20, marginBottom: 20 }}>
+        <p>USD: {formatNumber(balance.usd)}</p>
+        <p>LBP: {formatNumber(balance.lbp)}</p>
+      </Card>
       <Table
         loading={isLoading}
         scroll={{ x: true }}
         dataSource={transactions}
-        columns={columns}
+        columns={transactionsColumns}
         rowKey="id"
       />
 
-      <Card title="Current Balance" style={{ marginTop: 20 }}>
-        <p>USD: {formatNumber(balance.usd)}</p>
-        <p>LBP: {formatNumber(balance.lbp)}</p>
-      </Card>
 
       <Modal
         title="Add Payment"
@@ -552,6 +929,50 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           </Form.Item>
         </Form>
       </Modal>
+
+      <Table
+        loading={isLoading}
+        scroll={{ x: true }}
+        dataSource={credits}
+        columns={creditsColumns}
+        rowKey="id"
+        title={() => "Credits"}
+      />
+
+      <Table
+        loading={isLoading}
+        scroll={{ x: true }}
+        dataSource={payments}
+        columns={paymentsColumns}
+        rowKey="id"
+        title={() => "Payments"}
+      />
+
+      <Table
+        loading={isLoading}
+        scroll={{ x: true }}
+        dataSource={dailyBalances}
+        columns={dailyBalancesColumns}
+        rowKey="id"
+        title={() => "Daily Balances"}
+        expandable={{
+          expandedRowRender,
+          rowExpandable: (record) => {
+            const dailyCredits = credits.filter((credit) => credit.date === record.date);
+            const dailyPayments = payments.filter((payment) => payment.date === record.date);
+            return dailyCredits.length > 0 || dailyPayments.length > 0;
+          },
+        }}
+      />
+
+      <Table
+        loading={isLoading}
+        scroll={{ x: true }}
+        dataSource={sales}
+        columns={salesColumns}
+        rowKey="id"
+        title={() => "Sales"}
+      />
     </>
   );
 };

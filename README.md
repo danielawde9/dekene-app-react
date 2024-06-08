@@ -12,6 +12,9 @@ transaction lal insert
                 <p>Sales: {sales.length}</p>
                 <p>Withdrawals: {withdrawals.length}</p>
 
+
+credit edit value 
+
 ## Pass
 
 supa base

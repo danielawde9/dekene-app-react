@@ -17,6 +17,7 @@ import {
   InputNumber,
   Popconfirm,
   Input,
+  ConfigProvider,
 } from "antd";
 import { createClient } from "@supabase/supabase-js";
 import { ToastContainer, toast } from "react-toastify";
@@ -422,6 +423,7 @@ const MainScreen = ({ user }) => {
                           <Form.Item
                             name="amount_usd"
                             label="Amount USD"
+                            initialValue={0}
                             rules={[
                               {
                                 required: true,
@@ -437,6 +439,7 @@ const MainScreen = ({ user }) => {
                           <Form.Item
                             name="amount_lbp"
                             label="Amount LBP"
+                            initialValue={0}
                             rules={[
                               {
                                 required: true,
@@ -545,6 +548,8 @@ const MainScreen = ({ user }) => {
                           <Form.Item
                             name="amount_usd"
                             label="Amount USD"
+                            initialValue={0}
+
                             rules={[
                               {
                                 required: true,
@@ -573,6 +578,7 @@ const MainScreen = ({ user }) => {
                             />
                           </Form.Item>
                           <Form.Item
+
                             name="reference_number"
                             label="Reference Number"
                             rules={[
@@ -582,7 +588,9 @@ const MainScreen = ({ user }) => {
                               },
                             ]}
                           >
-                            <Input />
+                            <Input
+                              placeholder="Add a Reference Number"
+                            />
                           </Form.Item>
                           <Form.Item
                             name="cause"
@@ -594,7 +602,9 @@ const MainScreen = ({ user }) => {
                               },
                             ]}
                           >
-                            <Input />
+                            <Input
+                              placeholder="Add a Cause"
+                            />
                           </Form.Item>
                           <Form.Item
                             name="deduction_source"
@@ -682,6 +692,8 @@ const MainScreen = ({ user }) => {
                           <Form.Item
                             name="amount_usd"
                             label="Amount USD"
+                            initialValue={0}
+
                             rules={[
                               {
                                 required: true,
@@ -762,6 +774,8 @@ const MainScreen = ({ user }) => {
                           <Form.Item
                             name="amount_usd"
                             label="Amount USD"
+                            initialValue={0}
+
                             rules={[
                               {
                                 required: true,

@@ -17,14 +17,13 @@ import {
   InputNumber,
   Popconfirm,
   Input,
-  ConfigProvider,
 } from "antd";
 import { createClient } from "@supabase/supabase-js";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import Item from "antd/es/list/Item";
 import TransactionTable from "./TransactionTable";
 import moment from "moment";
+import Item from "antd/es/list/Item";
 
 const { Content, Footer } = Layout;
 const { Option } = Select;
@@ -50,9 +49,9 @@ const MainScreen = ({ user }) => {
   const [manualDateEnabled, setManualDateEnabled] = useState(false);
   const [selectedDate, setSelectedDate] = useState(currentDate);
   const [users, setUsers] = useState([]);
-  const [branches, setBranches] = useState([]); // State for branches
+  const [branches, setBranches] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [selectedBranch, setSelectedBranch] = useState(0); // Default branch
+  const [selectedBranch, setSelectedBranch] = useState(0);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [unpaidCredits, setUnpaidCredits] = useState([]);
@@ -86,7 +85,9 @@ const MainScreen = ({ user }) => {
       if (closedDatesError) {
         toast.error("Error fetching closed dates: " + closedDatesError.message);
       } else {
-        const dates = closedDatesData.map((item) => moment(item.date).format("YYYY-MM-DD"));
+        const dates = closedDatesData.map((item) =>
+          moment(item.date).format("YYYY-MM-DD")
+        );
         setClosedDates(dates);
       }
 
@@ -268,7 +269,6 @@ const MainScreen = ({ user }) => {
 
       if (balanceError) throw balanceError;
 
-      // Insert or update credits
       for (const credit of credits) {
         const { data, error: creditError } = await supabase
           .from("credits")
@@ -278,7 +278,6 @@ const MainScreen = ({ user }) => {
         if (creditError) throw creditError;
       }
 
-      // Insert payments
       for (const payment of payments) {
         const { error: paymentError } = await supabase
           .from("payments")
@@ -286,7 +285,6 @@ const MainScreen = ({ user }) => {
         if (paymentError) throw paymentError;
       }
 
-      // Insert sales
       for (const sale of sales) {
         const { error: saleError } = await supabase
           .from("sales")
@@ -294,7 +292,6 @@ const MainScreen = ({ user }) => {
         if (saleError) throw saleError;
       }
 
-      // Insert withdrawals
       for (const withdrawal of withdrawals) {
         const { error: withdrawalError } = await supabase
           .from("daniel")
@@ -304,7 +301,6 @@ const MainScreen = ({ user }) => {
 
       toast.success("Daily balance and transactions submitted successfully!");
 
-      // Reset state after submission
       setCredits([]);
       setPayments([]);
       setSales([]);
@@ -334,13 +330,11 @@ const MainScreen = ({ user }) => {
       selectedCredits.includes(credit.id)
     );
 
-    // Mark the selected credits as paid and add them to the credits state
     updatedCredits.forEach((credit) => {
       credit.status = true; // Mark as paid
       addTransaction("credit", credit); // Add to the credits state
     });
 
-    // Update the unpaid credits state
     setUnpaidCredits((prev) =>
       prev.filter((credit) => !selectedCredits.includes(credit.id))
     );
@@ -364,10 +358,8 @@ const MainScreen = ({ user }) => {
 
   const isClosingAllowed = Math.abs(totalsAfterDanielUSD) <= 2;
 
-  // Disable dates function
   const disableDates = (current) => {
-    // Disable past dates, closed dates, and dates from tomorrow onward
-    const tomorrow = moment().endOf('day');
+    const tomorrow = moment().endOf("day");
     const isClosedDate = closedDates.includes(current.format("YYYY-MM-DD"));
     return current && (current > tomorrow || isClosedDate);
   };
@@ -462,9 +454,7 @@ const MainScreen = ({ user }) => {
                               },
                             ]}
                           >
-                            <Input
-                              placeholder="Add a person"
-                            />
+                            <Input placeholder="Add a person" />
                           </Form.Item>
                           <Form.Item>
                             <Button type="primary" htmlType="submit">
@@ -549,7 +539,6 @@ const MainScreen = ({ user }) => {
                             name="amount_usd"
                             label="Amount USD"
                             initialValue={0}
-
                             rules={[
                               {
                                 required: true,
@@ -578,7 +567,6 @@ const MainScreen = ({ user }) => {
                             />
                           </Form.Item>
                           <Form.Item
-
                             name="reference_number"
                             label="Reference Number"
                             rules={[
@@ -588,9 +576,7 @@ const MainScreen = ({ user }) => {
                               },
                             ]}
                           >
-                            <Input
-                              placeholder="Add a Reference Number"
-                            />
+                            <Input placeholder="Add a Reference Number" />
                           </Form.Item>
                           <Form.Item
                             name="cause"
@@ -602,9 +588,7 @@ const MainScreen = ({ user }) => {
                               },
                             ]}
                           >
-                            <Input
-                              placeholder="Add a Cause"
-                            />
+                            <Input placeholder="Add a Cause" />
                           </Form.Item>
                           <Form.Item
                             name="deduction_source"
@@ -693,7 +677,6 @@ const MainScreen = ({ user }) => {
                             name="amount_usd"
                             label="Amount USD"
                             initialValue={0}
-
                             rules={[
                               {
                                 required: true,
@@ -775,7 +758,6 @@ const MainScreen = ({ user }) => {
                             name="amount_usd"
                             label="Amount USD"
                             initialValue={0}
-
                             rules={[
                               {
                                 required: true,
@@ -913,10 +895,10 @@ const MainScreen = ({ user }) => {
                               },
                             ]}
                           >
-                            <Select placeholder={
-                              "select a branch"
-                            } onChange={(value) => setSelectedBranch(value)}>
-
+                            <Select
+                              placeholder="Select a branch"
+                              onChange={(value) => setSelectedBranch(value)}
+                            >
                               {branches.map((branch) => (
                                 <Option key={branch.id} value={branch.id}>
                                   {branch.name}
@@ -924,6 +906,84 @@ const MainScreen = ({ user }) => {
                               ))}
                             </Select>
                           </Form.Item>
+                          {/* <div>
+                            <Typography.Title level={5}>
+                              Denominations in LBP:
+                            </Typography.Title>
+                            <Form.Item label="1000 LBP">
+                              <InputNumber
+                                min={0}
+                                formatter={formatNumber}
+                                style={{ width: "100%" }}
+                              />
+                            </Form.Item>
+                            <Form.Item label="10,000 LBP">
+                              <InputNumber
+                                min={0}
+                                formatter={formatNumber}
+                                style={{ width: "100%" }}
+                              />
+                            </Form.Item>
+                            <Form.Item label="100,000 LBP">
+                              <InputNumber
+                                min={0}
+                                formatter={formatNumber}
+                                style={{ width: "100%" }}
+                              />
+                            </Form.Item>
+                            <Typography.Title level={5}>
+                              Denominations in USD:
+                            </Typography.Title>
+                            <Form.Item label="1 USD">
+                              <InputNumber
+                                min={0}
+                                formatter={formatNumber}
+                                style={{ width: "100%" }}
+                              />
+                            </Form.Item>
+                            <Form.Item label="2 USD">
+                              <InputNumber
+                                min={0}
+                                formatter={formatNumber}
+                                style={{ width: "100%" }}
+                              />
+                            </Form.Item>
+                            <Form.Item label="5 USD">
+                              <InputNumber
+                                min={0}
+                                formatter={formatNumber}
+                                style={{ width: "100%" }}
+                              />
+                            </Form.Item>
+                            <Form.Item label="10 USD">
+                              <InputNumber
+                                min={0}
+                                formatter={formatNumber}
+                                style={{ width: "100%" }}
+                              />
+                            </Form.Item>
+                            <Form.Item label="20 USD">
+                              <InputNumber
+                                min={0}
+                                formatter={formatNumber}
+                                style={{ width: "100%" }}
+                              />
+                            </Form.Item>
+                            <Form.Item label="50 USD">
+                              <InputNumber
+                                min={0}
+                                formatter={formatNumber}
+                                style={{ width: "100%" }}
+                              />
+                            </Form.Item>
+                            <Form.Item label="100 USD">
+                              <InputNumber
+                                min={0}
+                                formatter={formatNumber}
+                                style={{ width: "100%" }}
+                              />
+                            </Form.Item>
+                          </div> */}
                           <Typography.Text>
                             Total in USD: {closingBalanceInUSD.toLocaleString()}
                           </Typography.Text>
@@ -990,8 +1050,8 @@ const MainScreen = ({ user }) => {
                             </Button>
                             {!isClosingAllowed && (
                               <Typography.Text type="danger">
-                                Your closing amount is not correct greater than
-                                2$
+                                Your closing amount is not correct, greater than
+                                $2
                               </Typography.Text>
                             )}
                           </Form.Item>
@@ -1031,7 +1091,10 @@ const MainScreen = ({ user }) => {
                   />
                 </div>
                 <Divider />
-                <TransactionTable adminUserId={user.id} exchangeRate={DEFAULT_EXCHANGE_RATE} />
+                <TransactionTable
+                  adminUserId={user.id}
+                  exchangeRate={DEFAULT_EXCHANGE_RATE}
+                />
               </div>
             </Item>
           )}

@@ -99,7 +99,6 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
 
     setTransactions(transactions);
 
-    // Calculate balance
     const totalDanielUSD = withdrawals.reduce(
       (acc, item) => acc + item.amount_usd,
       0
@@ -555,17 +554,8 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         const paidCredits = credits.filter(
           (credit) => credit.date === record.date && credit.status
         );
-        return paidCredits.length
-          ? paidCredits.map((credit) => (
-            <div key={credit.id}>
-              <p>{`USD: ${formatNumber(credit.amount_usd)}`}</p>
-              <p>{`LBP: ${formatNumber(
-                credit.amount_lbp
-              )}`}</p>
-              <p>{`Person: ${credit.person}`}</p>
-            </div>
-          ))
-          : "None";
+        return paidCredits.length > 0 ? "Click to + expand" : "None"
+
       },
     },
     {
@@ -576,17 +566,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         const unpaidCredits = credits.filter(
           (credit) => credit.date === record.date && !credit.status
         );
-        return unpaidCredits.length
-          ? unpaidCredits.map((credit) => (
-            <div key={credit.id}>
-              <p>{`USD: ${formatNumber(credit.amount_usd)}`}</p>
-              <p>{`LBP: ${formatNumber(
-                credit.amount_lbp
-              )}`}</p>
-              <p>{`Person: ${credit.person}`}</p>
-            </div>
-          ))
-          : "None";
+        return unpaidCredits.length > 0 ? "Click to + expand" : "None"
       },
     },
     {
@@ -688,8 +668,16 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
 
   const expandedRowRender = (record) => {
     const dailyPayments = payments.filter(payment => payment.date === record.date);
+    const dailyUnpaidCredits = credits.filter(credit => credit.date === record.date && !credit.status);
+    const dailyPaidCredits = credits.filter(credit => credit.date === record.date && credit.status);
+
     return (
       <Row gutter={[16, 16]}>
+        {dailyPayments.length > 0 && (
+          <Col span={24}>
+            <Typography.Title level={4}>Payments</Typography.Title>
+          </Col>
+        )}
         {dailyPayments.map((payment) => (
           <Col key={payment.id} span={8}>
             <Card title={`Payment ID: ${payment.id}`} bordered={false}>
@@ -701,9 +689,38 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
             </Card>
           </Col>
         ))}
+        {dailyUnpaidCredits.length > 0 && (
+          <Col span={24}>
+            <Typography.Title level={4}>Unpaid Credits</Typography.Title>
+          </Col>
+        )}
+        {dailyUnpaidCredits.map((credit) => (
+          <Col key={credit.id} span={8}>
+            <Card title={`Credit ID: ${credit.id}`} bordered={false}>
+              <p>{`USD: ${formatNumber(credit.amount_usd)}`}</p>
+              <p>{`LBP: ${formatNumber(credit.amount_lbp)}`}</p>
+              <p>{`Person: ${credit.person}`}</p>
+            </Card>
+          </Col>
+        ))}
+
+        {dailyPaidCredits.length > 0 && (
+          <Col span={24}>
+            <Typography.Title level={4}>Paid Credits</Typography.Title>
+          </Col>
+        )}
+        {dailyPaidCredits.map((credit) => (
+          <Col key={credit.id} span={8}>
+            <Card title={`Credit ID: ${credit.id}`} bordered={false}>
+              <p>{`USD: ${formatNumber(credit.amount_usd)}`}</p>
+              <p>{`LBP: ${formatNumber(credit.amount_lbp)}`}</p>
+              <p>{`Person: ${credit.person}`}</p>
+            </Card>
+          </Col>
+        ))}
+
       </Row>
     );
-
   };
 
   return (
@@ -748,7 +765,6 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         columns={transactionsColumns}
         rowKey="id"
       />
-
 
       <Modal
         title="Add Payment"
@@ -936,7 +952,8 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         dataSource={credits}
         columns={creditsColumns}
         rowKey="id"
-        title={() => "Credits"}
+        title={() => <Typography.Title level={5}>Credits</Typography.Title>}
+
       />
 
       <Table
@@ -945,7 +962,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         dataSource={payments}
         columns={paymentsColumns}
         rowKey="id"
-        title={() => "Payments"}
+        title={() => <Typography.Title level={5}>Payment</Typography.Title>}
       />
 
       <Table
@@ -954,7 +971,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         dataSource={dailyBalances}
         columns={dailyBalancesColumns}
         rowKey="id"
-        title={() => "Daily Balances"}
+        title={() => <Typography.Title level={5}>Daily Balances</Typography.Title>}
         expandable={{
           expandedRowRender,
           rowExpandable: (record) => {
@@ -964,14 +981,13 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           },
         }}
       />
-
       <Table
         loading={isLoading}
         scroll={{ x: true }}
         dataSource={sales}
         columns={salesColumns}
         rowKey="id"
-        title={() => "Sales"}
+        title={() => <Typography.Title level={5}>Sales</Typography.Title>}
       />
     </>
   );

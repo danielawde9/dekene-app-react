@@ -1010,10 +1010,10 @@ const MainScreen = ({ user }) => {
               >
                 <p>Are you sure you want to close the day?</p>
                 <p>Summary of added data:</p>
-                <p>Credits: {credits.length}</p>
-                <p>Payments: {payments.length}</p>
-                <p>Sales: {sales.length}</p>
-                <p>Withdrawals: {withdrawals.length}</p>
+                <p>Credits Total: {credits.reduce((acc, credit) => acc + credit.amount_usd + credit.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
+                <p>Payments Total: {payments.reduce((acc, payment) => acc + payment.amount_usd + payment.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
+                <p>Sales Total: {sales.reduce((acc, sale) => acc + sale.amount_usd + sale.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
+                <p>Withdrawals Total: {withdrawals.reduce((acc, withdrawal) => acc + withdrawal.amount_usd + withdrawal.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
               </Modal>
             </div>
           </Item>

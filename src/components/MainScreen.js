@@ -23,7 +23,8 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Item from "antd/es/list/Item";
 import TransactionTable from "./TransactionTable";
-import { disableTomorrow } from "../utils/disableTomorrow";
+import moment from "moment";
+
 const { Content, Footer } = Layout;
 const { Option } = Select;
 
@@ -54,6 +55,7 @@ const MainScreen = ({ user }) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [unpaidCredits, setUnpaidCredits] = useState([]);
+  const [closedDates, setClosedDates] = useState([]);
 
   useEffect(() => {
     // Fetch data on mount
@@ -73,6 +75,18 @@ const MainScreen = ({ user }) => {
           usd: lastDayBalance ? lastDayBalance.closing_usd : 0,
           lbp: lastDayBalance ? lastDayBalance.closing_lbp : 0,
         });
+      }
+
+      // Fetch closed dates
+      const { data: closedDatesData, error: closedDatesError } = await supabase
+        .from("dailybalances")
+        .select("date");
+
+      if (closedDatesError) {
+        toast.error("Error fetching closed dates: " + closedDatesError.message);
+      } else {
+        const dates = closedDatesData.map((item) => moment(item.date).format("YYYY-MM-DD"));
+        setClosedDates(dates);
       }
 
       // Fetch users
@@ -349,6 +363,14 @@ const MainScreen = ({ user }) => {
 
   const isClosingAllowed = Math.abs(totalsAfterDanielUSD) <= 2;
 
+  // Disable dates function
+  const disableDates = (current) => {
+    // Disable past dates, closed dates, and dates from tomorrow onward
+    const tomorrow = moment().endOf('day');
+    const isClosedDate = closedDates.includes(current.format("YYYY-MM-DD"));
+    return current && (current > tomorrow || isClosedDate);
+  };
+
   return (
     <Layout className="layout">
       <ToastContainer />
@@ -362,7 +384,7 @@ const MainScreen = ({ user }) => {
                   <Card
                     title="Opening Balance"
                     actions={[
-                      <Button type="primary" onClick={handleConfirm}>
+                      <Button type="primary" onClick={handleConfirm} disabled={isConfirmed}>
                         Confirm
                       </Button>,
                     ]}
@@ -465,6 +487,7 @@ const MainScreen = ({ user }) => {
                           </Select>
                         </Form.Item>
                         <Table
+                          scroll={{ x: true }}
                           dataSource={credits}
                           columns={[
                             {
@@ -939,7 +962,7 @@ const MainScreen = ({ user }) => {
                               <DatePicker
                                 format="YYYY-MM-DD"
                                 onChange={(date) => setSelectedDate(date)}
-                              // disabledDate={disableTomorrow}
+                                disabledDate={disableDates}
                               />
                             </Form.Item>
                           )}

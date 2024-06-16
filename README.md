@@ -1,10 +1,6 @@
 # todo
 
-add how many dol
-
-transaction lal insert
-
-credit edit value 
+credit edit value
 
 ## Pass
 

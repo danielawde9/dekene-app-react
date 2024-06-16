@@ -367,7 +367,7 @@ const MainScreen = ({ user }) => {
   return (
     <Layout className="layout">
       <ToastContainer />
-      <Content style={{ padding: "0 50px" }}>
+      <Content style={{ padding: "0 16px" }}>
         <Tabs defaultActiveKey="1">
           <Item tab="Main View" key="1">
             <div className="site-layout-content">

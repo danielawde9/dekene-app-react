@@ -143,6 +143,16 @@ const MainScreen = ({ user }) => {
     };
 
     fetchData();
+
+    // Load data from local storage
+    const storedTransactions = localStorage.getItem("transactions");
+    if (storedTransactions) {
+      const { credits, payments, sales, withdrawals } = JSON.parse(storedTransactions);
+      setCredits(credits || []);
+      setPayments(payments || []);
+      setSales(sales || []);
+      setWithdrawals(withdrawals || []);
+    }
   }, []);
 
   useEffect(() => {

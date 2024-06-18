@@ -62,7 +62,7 @@ const MainScreen = ({ user }) => {
   const [creditForm] = Form.useForm();
   const [paymentForm] = Form.useForm();
   const [saleForm] = Form.useForm();
-  const [withdrawalForm] = Form.useForm();
+  const [danielForm] = Form.useForm();
   const [editForm] = Form.useForm();
 
   useEffect(() => {
@@ -146,6 +146,7 @@ const MainScreen = ({ user }) => {
 
     // Load data from local storage
     const storedTransactions = localStorage.getItem("transactions");
+    console.log(storedTransactions, "storedTransactions")
     if (storedTransactions) {
       const { credits, payments, sales, withdrawals } = JSON.parse(storedTransactions);
       setCredits(credits || []);
@@ -159,6 +160,12 @@ const MainScreen = ({ user }) => {
     // Calculate totals whenever transactions change
     calculateTotals();
   }, [credits, payments, sales, withdrawals]);
+
+  const setStorage = () => {
+    console.log(credits, payments, sales, withdrawals)
+    localStorage.setItem("transactions", JSON.stringify({ credits, payments, sales, withdrawals }));
+    console.log(localStorage.setItem("transactions", JSON.stringify({ credits, payments, sales, withdrawals })))
+  }
 
   const calculateTotals = useCallback(() => {
     const totalCreditsUSD = credits.reduce(
@@ -220,13 +227,14 @@ const MainScreen = ({ user }) => {
       case "sale":
         setSales((prev) => [...prev, transaction]);
         break;
-      case "withdrawal":
+      case "daniel":
         setWithdrawals((prev) => [...prev, transaction]);
+        console.log(withdrawals, "add")
         break;
       default:
         break;
     }
-    localStorage.setItem("transactions", JSON.stringify({ credits, payments, sales, withdrawals }));
+    setStorage()
   };
 
   const handleDelete = (type, key) => {
@@ -240,13 +248,15 @@ const MainScreen = ({ user }) => {
       case "sale":
         setSales((prev) => prev.filter((item) => item.key !== key));
         break;
-      case "withdrawal":
+      case "daniel":
         setWithdrawals((prev) => prev.filter((item) => item.key !== key));
+        console.log(withdrawals, "delete")
+
         break;
       default:
         break;
     }
-    localStorage.setItem("transactions", JSON.stringify({ credits, payments, sales, withdrawals }));
+    setStorage()
   };
 
   const handleConfirm = () => {
@@ -325,6 +335,8 @@ const MainScreen = ({ user }) => {
       setPayments([]);
       setSales([]);
       setWithdrawals([]);
+      console.log(withdrawals, "submit")
+
       setOpeningBalances({ usd: closing_usd, lbp: closing_lbp });
       setIsModalVisible(false);
       localStorage.clear();
@@ -409,7 +421,9 @@ const MainScreen = ({ user }) => {
           prev.map((item) => (item.key === key ? { ...item, ...rest } : item))
         );
         break;
-      case "withdrawal":
+      case "daniel":
+        console.log(withdrawals, "edit")
+
         setWithdrawals((prev) =>
           prev.map((item) => (item.key === key ? { ...item, ...rest } : item))
         );
@@ -417,8 +431,8 @@ const MainScreen = ({ user }) => {
       default:
         break;
     }
+    setStorage()
     setIsEditModalVisible(false);
-    localStorage.setItem("transactions", JSON.stringify({ credits, payments, sales, withdrawals }));
     message.success("Transaction updated successfully!");
   };
 
@@ -832,15 +846,15 @@ const MainScreen = ({ user }) => {
                       </Card>
                     </Col>
                     <Col xs={24} sm={12}>
-                      <Card title="Withdrawals" style={{ marginTop: "20px" }}>
+                      <Card title="Daniel" style={{ marginTop: "20px" }}>
                         <Form
-                          form={withdrawalForm}
+                          form={danielForm}
                           onFinish={(values) => {
-                            addTransaction("withdrawal", {
+                            addTransaction("daniel", {
                               ...values,
                               key: Date.now(),
                             });
-                            withdrawalForm.resetFields();
+                            danielForm.resetFields();
                           }}
                         >
                           <Form.Item
@@ -902,13 +916,13 @@ const MainScreen = ({ user }) => {
                                 <>
                                   <Button
                                     type="link"
-                                    onClick={() => handleEdit({ ...record, type: "withdrawal" })}
+                                    onClick={() => handleEdit({ ...record, type: "daniel" })}
                                   >
                                     Edit
                                   </Button>
                                   <Popconfirm
                                     title="Sure to delete?"
-                                    onConfirm={() => handleDelete("withdrawal", record.key)}
+                                    onConfirm={() => handleDelete("daniel", record.key)}
                                   >
                                     <Button type="link">Delete</Button>
                                   </Popconfirm>
@@ -1089,7 +1103,7 @@ const MainScreen = ({ user }) => {
                 <p>Credits Total: {credits.reduce((acc, credit) => acc + credit.amount_usd + credit.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
                 <p>Payments Total: {payments.reduce((acc, payment) => acc + payment.amount_usd + payment.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
                 <p>Sales Total: {sales.reduce((acc, sale) => acc + sale.amount_usd + sale.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
-                <p>Withdrawals Total: {withdrawals.reduce((acc, withdrawal) => acc + withdrawal.amount_usd + withdrawal.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
+                <p>Daniel Total: {withdrawals.reduce((acc, withdrawal) => acc + withdrawal.amount_usd + withdrawal.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
               </Modal>
               <Modal
                 title="Edit Transaction"

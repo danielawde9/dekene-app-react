@@ -11,6 +11,7 @@ import {
   Input,
   Row,
   Col,
+  Divider,
 } from "antd";
 import { createClient } from "@supabase/supabase-js";
 import { formatNumber } from "../utils/formatNumber";
@@ -945,6 +946,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           </Form.Item>
         </Form>
       </Modal>
+      <Divider/>
 
       <Table
         loading={isLoading}
@@ -953,8 +955,8 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         columns={creditsColumns}
         rowKey="id"
         title={() => <Typography.Title level={5}>Credits</Typography.Title>}
-
       />
+      <Divider/>
 
       <Table
         loading={isLoading}
@@ -964,6 +966,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         rowKey="id"
         title={() => <Typography.Title level={5}>Payment</Typography.Title>}
       />
+      <Divider/>
 
       <Table
         loading={isLoading}
@@ -981,6 +984,8 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           },
         }}
       />
+      <Divider/>
+
       <Table
         loading={isLoading}
         scroll={{ x: true }}
@@ -989,6 +994,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         rowKey="id"
         title={() => <Typography.Title level={5}>Sales</Typography.Title>}
       />
+
     </>
   );
 };

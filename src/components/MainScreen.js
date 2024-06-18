@@ -146,7 +146,6 @@ const MainScreen = ({ user }) => {
 
     // Load data from local storage
     const storedTransactions = localStorage.getItem("transactions");
-    console.log(storedTransactions, "storedTransactions")
     if (storedTransactions) {
       const { credits, payments, sales, withdrawals } = JSON.parse(storedTransactions);
       setCredits(credits || []);
@@ -160,12 +159,6 @@ const MainScreen = ({ user }) => {
     // Calculate totals whenever transactions change
     calculateTotals();
   }, [credits, payments, sales, withdrawals]);
-
-  const setStorage = () => {
-    console.log(credits, payments, sales, withdrawals)
-    localStorage.setItem("transactions", JSON.stringify({ credits, payments, sales, withdrawals }));
-    console.log(localStorage.setItem("transactions", JSON.stringify({ credits, payments, sales, withdrawals })))
-  }
 
   const calculateTotals = useCallback(() => {
     const totalCreditsUSD = credits.reduce(
@@ -227,14 +220,13 @@ const MainScreen = ({ user }) => {
       case "sale":
         setSales((prev) => [...prev, transaction]);
         break;
-      case "daniel":
+      case "withdrawal":
         setWithdrawals((prev) => [...prev, transaction]);
-        console.log(withdrawals, "add")
         break;
       default:
         break;
     }
-    setStorage()
+    localStorage.setItem("transactions", JSON.stringify({ credits, payments, sales, withdrawals }));
   };
 
   const handleDelete = (type, key) => {
@@ -248,15 +240,13 @@ const MainScreen = ({ user }) => {
       case "sale":
         setSales((prev) => prev.filter((item) => item.key !== key));
         break;
-      case "daniel":
+      case "withdrawal":
         setWithdrawals((prev) => prev.filter((item) => item.key !== key));
-        console.log(withdrawals, "delete")
-
         break;
       default:
         break;
     }
-    setStorage()
+    localStorage.setItem("transactions", JSON.stringify({ credits, payments, sales, withdrawals }));
   };
 
   const handleConfirm = () => {
@@ -335,8 +325,6 @@ const MainScreen = ({ user }) => {
       setPayments([]);
       setSales([]);
       setWithdrawals([]);
-      console.log(withdrawals, "submit")
-
       setOpeningBalances({ usd: closing_usd, lbp: closing_lbp });
       setIsModalVisible(false);
       localStorage.clear();
@@ -421,9 +409,7 @@ const MainScreen = ({ user }) => {
           prev.map((item) => (item.key === key ? { ...item, ...rest } : item))
         );
         break;
-      case "daniel":
-        console.log(withdrawals, "edit")
-
+      case "withdrawal":
         setWithdrawals((prev) =>
           prev.map((item) => (item.key === key ? { ...item, ...rest } : item))
         );
@@ -431,9 +417,186 @@ const MainScreen = ({ user }) => {
       default:
         break;
     }
-    setStorage()
     setIsEditModalVisible(false);
+    localStorage.setItem("transactions", JSON.stringify({ credits, payments, sales, withdrawals }));
     message.success("Transaction updated successfully!");
+  };
+
+  const renderEditFormFields = () => {
+    if (!editingItem) return null;
+    const { type } = editingItem;
+
+    switch (type) {
+      case "credit":
+        return (
+          <>
+            <Form.Item
+              name="amount_usd"
+              label="Amount USD"
+              rules={[
+                {
+                  required: true,
+                  message: "Please input amount in USD!",
+                },
+              ]}
+            >
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name="amount_lbp"
+              label="Amount LBP"
+              rules={[
+                {
+                  required: true,
+                  message: "Please input amount in LBP!",
+                },
+              ]}
+            >
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name="person"
+              label="Person"
+              rules={[
+                {
+                  required: true,
+                  message: "Please input the person!",
+                },
+              ]}
+            >
+              <Input />
+            </Form.Item>
+          </>
+        );
+      case "payment":
+        return (
+          <>
+            <Form.Item
+              name="amount_usd"
+              label="Amount USD"
+              rules={[
+                {
+                  required: true,
+                  message: "Please input amount in USD!",
+                },
+              ]}
+            >
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name="amount_lbp"
+              label="Amount LBP"
+              rules={[
+                {
+                  required: true,
+                  message: "Please input amount in LBP!",
+                },
+              ]}
+            >
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name="reference_number"
+              label="Reference Number"
+              rules={[
+                {
+                  required: true,
+                  message: "Please input the reference number!",
+                },
+              ]}
+            >
+              <Input placeholder="Add a Reference Number" />
+            </Form.Item>
+            <Form.Item
+              name="cause"
+              label="Cause"
+              rules={[
+                {
+                  required: true,
+                  message: "Please input the cause!",
+                },
+              ]}
+            >
+              <Input placeholder="Add a Cause" />
+            </Form.Item>
+            <Form.Item
+              name="deduction_source"
+              label="Deduction Source"
+              rules={[
+                {
+                  required: true,
+                  message: "Please select the deduction source!",
+                },
+              ]}
+            >
+              <Select placeholder="Select deduction source">
+                <Option value="current">Current Closing</Option>
+                <Option value="daniel">Daniel</Option>
+              </Select>
+            </Form.Item>
+          </>
+        );
+      case "sale":
+        return (
+          <>
+            <Form.Item
+              name="amount_usd"
+              label="Amount USD"
+              rules={[
+                {
+                  required: true,
+                  message: "Please input amount in USD!",
+                },
+              ]}
+            >
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name="amount_lbp"
+              label="Amount LBP"
+              rules={[
+                {
+                  required: true,
+                  message: "Please input amount in LBP!",
+                },
+              ]}
+            >
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+            </Form.Item>
+          </>
+        );
+      case "withdrawal":
+        return (
+          <>
+            <Form.Item
+              name="amount_usd"
+              label="Amount USD"
+              rules={[
+                {
+                  required: true,
+                  message: "Please input amount in USD!",
+                },
+              ]}
+            >
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name="amount_lbp"
+              label="Amount LBP"
+              rules={[
+                {
+                  required: true,
+                  message: "Please input amount in LBP!",
+                },
+              ]}
+            >
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+            </Form.Item>
+          </>
+        );
+      default:
+        return null;
+    }
   };
 
   const handleLogout = () => {
@@ -850,7 +1013,7 @@ const MainScreen = ({ user }) => {
                         <Form
                           form={danielForm}
                           onFinish={(values) => {
-                            addTransaction("daniel", {
+                            addTransaction("withdrawal", {
                               ...values,
                               key: Date.now(),
                             });
@@ -916,13 +1079,13 @@ const MainScreen = ({ user }) => {
                                 <>
                                   <Button
                                     type="link"
-                                    onClick={() => handleEdit({ ...record, type: "daniel" })}
+                                    onClick={() => handleEdit({ ...record, type: "withdrawal" })}
                                   >
                                     Edit
                                   </Button>
                                   <Popconfirm
                                     title="Sure to delete?"
-                                    onConfirm={() => handleDelete("daniel", record.key)}
+                                    onConfirm={() => handleDelete("withdrawal", record.key)}
                                   >
                                     <Button type="link">Delete</Button>
                                   </Popconfirm>
@@ -1103,7 +1266,7 @@ const MainScreen = ({ user }) => {
                 <p>Credits Total: {credits.reduce((acc, credit) => acc + credit.amount_usd + credit.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
                 <p>Payments Total: {payments.reduce((acc, payment) => acc + payment.amount_usd + payment.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
                 <p>Sales Total: {sales.reduce((acc, sale) => acc + sale.amount_usd + sale.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
-                <p>Daniel Total: {withdrawals.reduce((acc, withdrawal) => acc + withdrawal.amount_usd + withdrawal.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
+                <p>Withdrawals Total: {withdrawals.reduce((acc, withdrawal) => acc + withdrawal.amount_usd + withdrawal.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
               </Modal>
               <Modal
                 title="Edit Transaction"
@@ -1127,42 +1290,7 @@ const MainScreen = ({ user }) => {
                   <Form.Item name="type" hidden>
                     <Input />
                   </Form.Item>
-                  <Form.Item
-                    name="amount_usd"
-                    label="Amount USD"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Please input amount in USD!",
-                      },
-                    ]}
-                  >
-                    <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
-                  </Form.Item>
-                  <Form.Item
-                    name="amount_lbp"
-                    label="Amount LBP"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Please input amount in LBP!",
-                      },
-                    ]}
-                  >
-                    <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
-                  </Form.Item>
-                  <Form.Item
-                    name="person"
-                    label="Person"
-                    rules={[
-                      {
-                        required: true,
-                        message: "Please input the person!",
-                      },
-                    ]}
-                  >
-                    <Input />
-                  </Form.Item>
+                  {renderEditFormFields()}
                 </Form>
               </Modal>
             </div>

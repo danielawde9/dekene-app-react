@@ -1185,7 +1185,7 @@ const MainScreen = ({ user }) => {
                           <Typography.Text
                             style={{
                               color:
-                                totalsAfterDanielUSD.toLocaleString() < 2 &&
+                                totalsAfterDanielUSD.toLocaleString() < 20 &&
                                   totalsAfterDanielUSD.toLocaleString() >= 0
                                   ? "green"
                                   : "red",

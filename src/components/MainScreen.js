@@ -18,6 +18,7 @@ import {
   Popconfirm,
   Input,
   message,
+  Radio,
 } from "antd";
 import { createClient } from "@supabase/supabase-js";
 import { ToastContainer, toast } from "react-toastify";
@@ -41,6 +42,7 @@ const formatNumber = (value) => new Intl.NumberFormat().format(value);
 
 const MainScreen = ({ user }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [openingDate, setOpeningDate] = useState(null);
   const [openingBalances, setOpeningBalances] = useState({ usd: 0, lbp: 0 });
   const [closingBalances, setClosingBalances] = useState({ usd: 0, lbp: 0 });
   const [credits, setCredits] = useState([]);
@@ -85,6 +87,8 @@ const MainScreen = ({ user }) => {
           usd: lastDayBalance ? lastDayBalance.closing_usd : 0,
           lbp: lastDayBalance ? lastDayBalance.closing_lbp : 0,
         });
+        const adjustedDate = moment(lastDayBalance.date).add(1, 'days').toDate();
+        setOpeningDate(adjustedDate);
       }
 
       // Fetch closed dates
@@ -270,9 +274,14 @@ const MainScreen = ({ user }) => {
     setIsModalVisible(true);
   };
 
+  useEffect(() => {
+    console.log(selectedDate, 'date')
+  }, [selectedDate])
+
   const handleConfirmSubmit = async () => {
     const { usd: closing_usd, lbp: closing_lbp } = closingBalances;
     const date = manualDateEnabled ? selectedDate : currentDate;
+    console.log(selectedDate, 'date')
 
     try {
       const { data: balanceData, error: balanceError } = await supabase
@@ -366,9 +375,9 @@ const MainScreen = ({ user }) => {
   const calculateTotalsAfterDaniel = () => {
     const closingBalanceInUSD =
       closingBalances.usd + closingBalances.lbp / exchangeRate;
-    const totalsBeforeDanielInUSD = totals.usd + totals.lbp / exchangeRate;
+    const totalsInUSD = totals.usd + totals.lbp / exchangeRate;
 
-    const totalsAfterDanielUSD = totalsBeforeDanielInUSD - closingBalanceInUSD;
+    const totalsAfterDanielUSD = closingBalanceInUSD - totalsInUSD;
 
     return {
       closingBalanceInUSD,
@@ -500,12 +509,7 @@ const MainScreen = ({ user }) => {
             <Form.Item
               name="reference_number"
               label="Reference Number"
-              rules={[
-                {
-                  required: true,
-                  message: "Please input the reference number!",
-                },
-              ]}
+
             >
               <Input placeholder="Add a Reference Number" />
             </Form.Item>
@@ -625,7 +629,7 @@ const MainScreen = ({ user }) => {
                     ]}
                   >
                     <Typography.Title level={5}>
-                      Date: {currentDate.toISOString().split("T")[0]}
+                      Date: {openingDate ? openingDate.toISOString().split("T")[0] : 'Loading...'}
                     </Typography.Title>
                     <Typography.Title level={5}>
                       Closing USD: {formatNumber(openingBalances.usd)}
@@ -651,6 +655,7 @@ const MainScreen = ({ user }) => {
                           onFinish={(values) => {
                             addTransaction("credit", {
                               ...values,
+                              status: values.status,
                               key: Date.now(),
                             });
                             creditForm.resetFields();
@@ -699,6 +704,22 @@ const MainScreen = ({ user }) => {
                             ]}
                           >
                             <Input placeholder="Add a person" />
+                          </Form.Item>
+                          <Form.Item
+                            name="status"
+                            label="Status"
+                            initialValue={false}  // Default to "Unpaid" (false)
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please select the status!",
+                              },
+                            ]}
+                          >
+                            <Radio.Group>
+                              <Radio value={true}>Paid</Radio>
+                              <Radio value={false}>Unpaid</Radio>
+                            </Radio.Group>
                           </Form.Item>
                           <Form.Item>
                             <Button type="primary" htmlType="submit">

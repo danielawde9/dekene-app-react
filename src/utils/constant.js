@@ -1,0 +1,1 @@
+export const CLOSING_ALLOWED = 20

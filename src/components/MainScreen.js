@@ -25,6 +25,7 @@ import "react-toastify/dist/ReactToastify.css";
 import TransactionTable from "./TransactionTable";
 import moment from "moment";
 import Item from "antd/es/list/Item";
+import { CLOSING_ALLOWED } from "../utils/constant";
 
 const { Content, Footer } = Layout;
 const { Option } = Select;
@@ -377,7 +378,7 @@ const MainScreen = ({ user }) => {
   const { closingBalanceInUSD, totalsAfterDanielUSD } =
     calculateTotalsAfterDaniel();
 
-  const isClosingAllowed = Math.abs(totalsAfterDanielUSD) <= 2;
+  const isClosingAllowed = Math.abs(totalsAfterDanielUSD) <= CLOSING_ALLOWED;
 
   const disableDates = (current) => {
     const tomorrow = moment().endOf("day");
@@ -1185,7 +1186,7 @@ const MainScreen = ({ user }) => {
                           <Typography.Text
                             style={{
                               color:
-                                totalsAfterDanielUSD.toLocaleString() < 20 &&
+                                totalsAfterDanielUSD.toLocaleString() < CLOSING_ALLOWED &&
                                   totalsAfterDanielUSD.toLocaleString() >= 0
                                   ? "green"
                                   : "red",
@@ -1321,7 +1322,7 @@ const MainScreen = ({ user }) => {
           Logout
         </Button>
       </Content>
-      <Footer style={{ textAlign: "center" }}>Dekene Web App ©2024</Footer>
+      <Footer style={{ textAlign: "center" }}>Dekene Web App ©2024, Developed by <Link href='danielawde9.com'>Daniel Awde</Link></Footer>
     </Layout>
   );
 };

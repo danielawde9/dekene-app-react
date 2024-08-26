@@ -26,6 +26,7 @@ import TransactionTable from "./TransactionTable";
 import moment from "moment";
 import Item from "antd/es/list/Item";
 import { CLOSING_ALLOWED } from "../utils/constant";
+import { Link } from "react-router-dom";
 
 const { Content, Footer } = Layout;
 const { Option } = Select;
@@ -1246,7 +1247,7 @@ const MainScreen = ({ user }) => {
                             {!isClosingAllowed && (
                               <Typography.Text type="danger">
                                 Your closing amount is not correct, greater than
-                                $2
+                                ${CLOSING_ALLOWED}
                               </Typography.Text>
                             )}
                           </Form.Item>
@@ -1322,7 +1323,7 @@ const MainScreen = ({ user }) => {
           Logout
         </Button>
       </Content>
-      <Footer style={{ textAlign: "center" }}>Dekene Web App ©2024, Developed by <Link href='danielawde9.com'>Daniel Awde</Link></Footer>
+      <Footer style={{ textAlign: "center" }}>Dekene Web App ©2024, Developed by <a href='https://danielawde9.com'>Daniel Awde</a></Footer>
     </Layout>
   );
 };

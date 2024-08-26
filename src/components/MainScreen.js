@@ -842,12 +842,7 @@ const MainScreen = ({ user }) => {
                           <Form.Item
                             name="reference_number"
                             label="Reference Number"
-                            rules={[
-                              {
-                                required: true,
-                                message: "Please input the reference number!",
-                              },
-                            ]}
+                            
                           >
                             <Input placeholder="Add a Reference Number" />
                           </Form.Item>

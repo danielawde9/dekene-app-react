@@ -281,14 +281,14 @@ const MainScreen = ({ user }) => {
   const handleConfirmSubmit = async () => {
     const { usd: closing_usd, lbp: closing_lbp } = closingBalances;
     const date = manualDateEnabled ? selectedDate : currentDate;
-    console.log(selectedDate, 'date')
+    const lebanonDate = moment.tz(date, "Asia/Beirut").format();
 
     try {
       const { data: balanceData, error: balanceError } = await supabase
         .from("dailybalances")
         .insert([
           {
-            date,
+            date: lebanonDate, // Use Lebanon timezone date
             opening_usd: openingBalances.usd,
             opening_lbp: openingBalances.lbp,
             closing_usd,
@@ -629,8 +629,9 @@ const MainScreen = ({ user }) => {
                     ]}
                   >
                     <Typography.Title level={5}>
-                      Date: {openingDate ? openingDate.toISOString().split("T")[0] : 'Loading...'}
+                      Date: {openingDate ? moment.tz(openingDate, "Asia/Beirut").format("YYYY-MM-DD") : 'Loading...'}
                     </Typography.Title>
+
                     <Typography.Title level={5}>
                       Closing USD: {formatNumber(openingBalances.usd)}
                     </Typography.Title>
@@ -842,7 +843,7 @@ const MainScreen = ({ user }) => {
                           <Form.Item
                             name="reference_number"
                             label="Reference Number"
-                            
+
                           >
                             <Input placeholder="Add a Reference Number" />
                           </Form.Item>

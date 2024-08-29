@@ -26,8 +26,7 @@ import "react-toastify/dist/ReactToastify.css";
 import TransactionTable from "./TransactionTable";
 import moment from "moment";
 import Item from "antd/es/list/Item";
-import { CLOSING_ALLOWED } from "../utils/constant";
-import { Link } from "react-router-dom";
+import { CLOSING_ALLOWED, DEFAULT_EXCHANGE_RATE } from "../utils/constant";
 
 const { Content, Footer } = Layout;
 const { Option } = Select;
@@ -36,7 +35,6 @@ const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey = process.env.REACT_APP_SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const DEFAULT_EXCHANGE_RATE = 90000;
 
 const formatNumber = (value) => new Intl.NumberFormat().format(value);
 
@@ -68,6 +66,8 @@ const MainScreen = ({ user }) => {
   const [saleForm] = Form.useForm();
   const [danielForm] = Form.useForm();
   const [editForm] = Form.useForm();
+
+
 
   useEffect(() => {
     // Fetch data on mount
@@ -274,21 +274,24 @@ const MainScreen = ({ user }) => {
     setIsModalVisible(true);
   };
 
-  useEffect(() => {
-    console.log(selectedDate, 'date')
-  }, [selectedDate])
+  // useEffect(() => {
+  //   console.log(selectedDate, 'date')
+  // }, [selectedDate])
 
   const handleConfirmSubmit = async () => {
     const { usd: closing_usd, lbp: closing_lbp } = closingBalances;
-    const date = manualDateEnabled ? selectedDate : currentDate;
-    const lebanonDate = moment.tz(date, "Asia/Beirut").format();
+    // Ensure the date is a Date object
+    const date = new Date(manualDateEnabled ? selectedDate : currentDate);
 
+    // Add 3 hours to the date
+    date.setHours(date.getHours() + 3);
+    console.log(date, 'date')
     try {
       const { data: balanceData, error: balanceError } = await supabase
         .from("dailybalances")
         .insert([
           {
-            date: lebanonDate, // Use Lebanon timezone date
+            date, // Use Lebanon timezone date
             opening_usd: openingBalances.usd,
             opening_lbp: openingBalances.lbp,
             closing_usd,
@@ -629,9 +632,8 @@ const MainScreen = ({ user }) => {
                     ]}
                   >
                     <Typography.Title level={5}>
-                      Date: {openingDate ? moment.tz(openingDate, "Asia/Beirut").format("YYYY-MM-DD") : 'Loading...'}
+                      Date: {openingDate ? openingDate.toISOString().split("T")[0] : 'Loading...'}
                     </Typography.Title>
-
                     <Typography.Title level={5}>
                       Closing USD: {formatNumber(openingBalances.usd)}
                     </Typography.Title>

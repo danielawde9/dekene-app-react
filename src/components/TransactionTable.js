@@ -118,12 +118,14 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
     );
     const totalConversionsUSD = conversions.reduce(
       (acc, item) =>
-        acc + (item.original_currency === "USD" ? -item.amount_usd : item.amount_usd),
+        acc +
+        (item.original_currency === "USD" ? -item.amount_usd : item.amount_usd),
       0
     );
     const totalConversionsLBP = conversions.reduce(
       (acc, item) =>
-        acc + (item.original_currency === "LBP" ? -item.amount_lbp : item.amount_lbp),
+        acc +
+        (item.original_currency === "LBP" ? -item.amount_lbp : item.amount_lbp),
       0
     );
 
@@ -224,13 +226,19 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
 
   const handleDelete = async (record) => {
     const { type, id, amount_usd, amount_lbp } = record;
+
     try {
-      const { error } = await supabase.from(type.toLowerCase() + "s").delete().eq("id", id);
+      const { error } = await supabase
+        .from(type.toLowerCase() + "s")
+        .delete()
+        .eq("id", id);
 
       if (error) {
         toast.error("Error deleting transaction: " + error.message);
       } else {
-        setTransactions(transactions.filter((transaction) => transaction.id !== id));
+        setTransactions(
+          transactions.filter((transaction) => transaction.id !== id)
+        );
         toast.success("Transaction deleted successfully!");
         // Recalculate balance
         if (type === "Payment" && record.deduction_source === "daniel") {
@@ -254,30 +262,32 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
     const convertedTransaction =
       conversionType === "usd_to_lbp"
         ? {
-          date: values.date,
-          amount_usd: values.amount_usd,
-          amount_lbp: values.amount_usd * exchangeRate,
-          exchange_rate: exchangeRate,
-          type: "Conversion",
-          user_id: adminUserId,
-          original_currency: "USD",
-          converted_currency: "LBP",
-          branch_id: values.branch_id || 0, // Add branch_id to the conversion transaction
-        }
+            date: values.date,
+            amount_usd: values.amount_usd,
+            amount_lbp: values.amount_usd * exchangeRate,
+            exchange_rate: exchangeRate,
+            type: "Conversion",
+            user_id: adminUserId,
+            original_currency: "USD",
+            converted_currency: "LBP",
+            branch_id: values.branch_id || 0, // Add branch_id to the conversion transaction
+          }
         : {
-          date: values.date,
-          amount_usd: values.amount_lbp / exchangeRate,
-          amount_lbp: values.amount_lbp,
-          type: "Conversion",
-          exchange_rate: exchangeRate,
-          user_id: adminUserId,
-          original_currency: "LBP",
-          converted_currency: "USD",
-          branch_id: values.branch_id || 0, // Add branch_id to the conversion transaction
-        };
+            date: values.date,
+            amount_usd: values.amount_lbp / exchangeRate,
+            amount_lbp: values.amount_lbp,
+            type: "Conversion",
+            exchange_rate: exchangeRate,
+            user_id: adminUserId,
+            original_currency: "LBP",
+            converted_currency: "USD",
+            branch_id: values.branch_id || 0, // Add branch_id to the conversion transaction
+          };
 
     try {
-      const { error } = await supabase.from("conversions").insert([convertedTransaction]);
+      const { error } = await supabase
+        .from("conversions")
+        .insert([convertedTransaction]);
 
       if (error) {
         toast.error("Error adding conversion: " + error.message);
@@ -388,7 +398,10 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
       key: "action",
       align: "center",
       render: (text, record) => (
-        <Button type="link" onClick={() => handleDelete(record)}>
+        <Button
+          type="link"
+          onClick={() => handleDelete(record)}
+        >
           Delete
         </Button>
       ),
@@ -449,7 +462,10 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
       key: "action",
       align: "center",
       render: (text, record) => (
-        <Button type="link" onClick={() => handleDelete(record)}>
+        <Button
+          type="link"
+          onClick={() => handleDelete(record)}
+        >
           Delete
         </Button>
       ),
@@ -505,7 +521,10 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
       key: "action",
       align: "center",
       render: (text, record) => (
-        <Button type="link" onClick={() => handleDelete(record)}>
+        <Button
+          type="link"
+          onClick={() => handleDelete(record)}
+        >
           Delete
         </Button>
       ),
@@ -555,8 +574,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         const paidCredits = credits.filter(
           (credit) => credit.date === record.date && credit.status
         );
-        return paidCredits.length > 0 ? "Click to + expand" : "None"
-
+        return paidCredits.length > 0 ? "Click to + expand" : "None";
       },
     },
     {
@@ -567,7 +585,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         const unpaidCredits = credits.filter(
           (credit) => credit.date === record.date && !credit.status
         );
-        return unpaidCredits.length > 0 ? "Click to + expand" : "None"
+        return unpaidCredits.length > 0 ? "Click to + expand" : "None";
       },
     },
     {
@@ -578,7 +596,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         const dailyPayments = payments.filter(
           (payment) => payment.date === record.date
         );
-        return dailyPayments.length > 0 ? "Click to + expand" : "None"
+        return dailyPayments.length > 0 ? "Click to + expand" : "None";
       },
     },
     {
@@ -591,14 +609,11 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         );
         return dailyWithdrawals.length
           ? dailyWithdrawals.map((withdrawal) => (
-
-            <div key={withdrawal.id}>
-              <p>{`USD: ${formatNumber(withdrawal.amount_usd)}`}</p>
-              <p>{`LBP: ${formatNumber(
-                withdrawal.amount_lbp
-              )}`}</p>
-            </div>
-          ))
+              <div key={withdrawal.id}>
+                <p>{`USD: ${formatNumber(withdrawal.amount_usd)}`}</p>
+                <p>{`LBP: ${formatNumber(withdrawal.amount_lbp)}`}</p>
+              </div>
+            ))
           : "None";
       },
     },
@@ -660,7 +675,10 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
       key: "action",
       align: "center",
       render: (text, record) => (
-        <Button type="link" onClick={() => handleDelete(record)}>
+        <Button
+          type="link"
+          onClick={() => handleDelete({ ...record, type: "sale" })}
+        >
           Delete
         </Button>
       ),
@@ -668,9 +686,15 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
   ];
 
   const expandedRowRender = (record) => {
-    const dailyPayments = payments.filter(payment => payment.date === record.date);
-    const dailyUnpaidCredits = credits.filter(credit => credit.date === record.date && !credit.status);
-    const dailyPaidCredits = credits.filter(credit => credit.date === record.date && credit.status);
+    const dailyPayments = payments.filter(
+      (payment) => payment.date === record.date
+    );
+    const dailyUnpaidCredits = credits.filter(
+      (credit) => credit.date === record.date && !credit.status
+    );
+    const dailyPaidCredits = credits.filter(
+      (credit) => credit.date === record.date && credit.status
+    );
 
     return (
       <Row gutter={[16, 16]}>
@@ -680,8 +704,14 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           </Col>
         )}
         {dailyPayments.map((payment) => (
-          <Col key={payment.id} span={8}>
-            <Card title={`Payment ID: ${payment.id}`} bordered={false}>
+          <Col
+            key={payment.id}
+            span={8}
+          >
+            <Card
+              title={`Payment ID: ${payment.id}`}
+              bordered={false}
+            >
               <p>{`USD: ${formatNumber(payment.amount_usd)}`}</p>
               <p>{`LBP: ${formatNumber(payment.amount_lbp)}`}</p>
               <p>{`Ref: ${payment.reference_number}`}</p>
@@ -696,8 +726,14 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           </Col>
         )}
         {dailyUnpaidCredits.map((credit) => (
-          <Col key={credit.id} span={8}>
-            <Card title={`Credit ID: ${credit.id}`} bordered={false}>
+          <Col
+            key={credit.id}
+            span={8}
+          >
+            <Card
+              title={`Credit ID: ${credit.id}`}
+              bordered={false}
+            >
               <p>{`USD: ${formatNumber(credit.amount_usd)}`}</p>
               <p>{`LBP: ${formatNumber(credit.amount_lbp)}`}</p>
               <p>{`Person: ${credit.person}`}</p>
@@ -711,15 +747,20 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           </Col>
         )}
         {dailyPaidCredits.map((credit) => (
-          <Col key={credit.id} span={8}>
-            <Card title={`Credit ID: ${credit.id}`} bordered={false}>
+          <Col
+            key={credit.id}
+            span={8}
+          >
+            <Card
+              title={`Credit ID: ${credit.id}`}
+              bordered={false}
+            >
               <p>{`USD: ${formatNumber(credit.amount_usd)}`}</p>
               <p>{`LBP: ${formatNumber(credit.amount_lbp)}`}</p>
               <p>{`Person: ${credit.person}`}</p>
             </Card>
           </Col>
         ))}
-
       </Row>
     );
   };
@@ -755,7 +796,10 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         Convert LBP to USD
       </Button>
 
-      <Card title="Current Balance" style={{ marginTop: 20, marginBottom: 20 }}>
+      <Card
+        title="Current Balance"
+        style={{ marginTop: 20, marginBottom: 20 }}
+      >
         <p>USD: {formatNumber(balance.usd)}</p>
         <p>LBP: {formatNumber(balance.lbp)}</p>
       </Card>
@@ -786,7 +830,10 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           >
             <Select>
               {dailyBalances.map((balance) => (
-                <Option key={balance.id} value={balance.date}>
+                <Option
+                  key={balance.id}
+                  value={balance.date}
+                >
                   {balance.date}
                 </Option>
               ))}
@@ -837,14 +884,20 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           >
             <Select placeholder="Select a branch">
               {branches.map((branch) => (
-                <Option key={branch.id} value={branch.id}>
+                <Option
+                  key={branch.id}
+                  value={branch.id}
+                >
                   {branch.name}
                 </Option>
               ))}
             </Select>
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit">
+            <Button
+              type="primary"
+              htmlType="submit"
+            >
               Add Payment
             </Button>
           </Form.Item>
@@ -861,7 +914,10 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         onCancel={() => setIsConvertModalVisible(false)}
         footer={null}
       >
-        <Form form={convertForm} onFinish={handleConvert}>
+        <Form
+          form={convertForm}
+          onFinish={handleConvert}
+        >
           {conversionType === "usd_to_lbp" ? (
             <Form.Item
               name="amount_usd"
@@ -904,7 +960,10 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
               style={{ width: "100%" }}
             />
           </Form.Item>
-          <Typography.Title level={5} style={{ marginBottom: 20 }}>
+          <Typography.Title
+            level={5}
+            style={{ marginBottom: 20 }}
+          >
             {conversionType === "usd_to_lbp"
               ? `Converted Amount: ${formatNumber(convertedAmount)} LBP`
               : `Converted Amount: ${formatNumber(convertedAmount)} USD`}
@@ -918,7 +977,10 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           >
             <Select>
               {dailyBalances.map((balance) => (
-                <Option key={balance.id} value={balance.date}>
+                <Option
+                  key={balance.id}
+                  value={balance.date}
+                >
                   {balance.date}
                 </Option>
               ))}
@@ -931,14 +993,20 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           >
             <Select placeholder="Select a branch">
               {branches.map((branch) => (
-                <Option key={branch.id} value={branch.id}>
+                <Option
+                  key={branch.id}
+                  value={branch.id}
+                >
                   {branch.name}
                 </Option>
               ))}
             </Select>
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit">
+            <Button
+              type="primary"
+              htmlType="submit"
+            >
               {conversionType === "usd_to_lbp"
                 ? "Convert and Add"
                 : "Convert and Add"}
@@ -946,7 +1014,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           </Form.Item>
         </Form>
       </Modal>
-      <Divider/>
+      <Divider />
 
       <Table
         loading={isLoading}
@@ -956,7 +1024,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         rowKey="id"
         title={() => <Typography.Title level={5}>Credits</Typography.Title>}
       />
-      <Divider/>
+      <Divider />
 
       <Table
         loading={isLoading}
@@ -966,7 +1034,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         rowKey="id"
         title={() => <Typography.Title level={5}>Payment</Typography.Title>}
       />
-      <Divider/>
+      <Divider />
 
       <Table
         loading={isLoading}
@@ -974,17 +1042,23 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         dataSource={dailyBalances}
         columns={dailyBalancesColumns}
         rowKey="id"
-        title={() => <Typography.Title level={5}>Daily Balances</Typography.Title>}
+        title={() => (
+          <Typography.Title level={5}>Daily Balances</Typography.Title>
+        )}
         expandable={{
           expandedRowRender,
           rowExpandable: (record) => {
-            const dailyCredits = credits.filter((credit) => credit.date === record.date);
-            const dailyPayments = payments.filter((payment) => payment.date === record.date);
+            const dailyCredits = credits.filter(
+              (credit) => credit.date === record.date
+            );
+            const dailyPayments = payments.filter(
+              (payment) => payment.date === record.date
+            );
             return dailyCredits.length > 0 || dailyPayments.length > 0;
           },
         }}
       />
-      <Divider/>
+      <Divider />
 
       <Table
         loading={isLoading}
@@ -994,7 +1068,6 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         rowKey="id"
         title={() => <Typography.Title level={5}>Sales</Typography.Title>}
       />
-
     </>
   );
 };

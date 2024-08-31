@@ -35,7 +35,6 @@ const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey = process.env.REACT_APP_SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-
 const formatNumber = (value) => new Intl.NumberFormat().format(value);
 
 const MainScreen = ({ user }) => {
@@ -67,8 +66,6 @@ const MainScreen = ({ user }) => {
   const [danielForm] = Form.useForm();
   const [editForm] = Form.useForm();
 
-
-
   useEffect(() => {
     // Fetch data on mount
     const fetchData = async () => {
@@ -87,7 +84,9 @@ const MainScreen = ({ user }) => {
           usd: lastDayBalance ? lastDayBalance.closing_usd : 0,
           lbp: lastDayBalance ? lastDayBalance.closing_lbp : 0,
         });
-        const adjustedDate = moment(lastDayBalance.date).add(1, 'days').toDate();
+        const adjustedDate = moment(lastDayBalance.date)
+          .add(1, "days")
+          .toDate();
         setOpeningDate(adjustedDate);
       }
 
@@ -153,7 +152,8 @@ const MainScreen = ({ user }) => {
     // Load data from local storage
     const storedTransactions = localStorage.getItem("transactions");
     if (storedTransactions) {
-      const { credits, payments, sales, withdrawals } = JSON.parse(storedTransactions);
+      const { credits, payments, sales, withdrawals } =
+        JSON.parse(storedTransactions);
       setCredits(credits || []);
       setPayments(payments || []);
       setSales(sales || []);
@@ -232,7 +232,10 @@ const MainScreen = ({ user }) => {
       default:
         break;
     }
-    localStorage.setItem("transactions", JSON.stringify({ credits, payments, sales, withdrawals }));
+    localStorage.setItem(
+      "transactions",
+      JSON.stringify({ credits, payments, sales, withdrawals })
+    );
   };
 
   const handleDelete = (type, key) => {
@@ -252,7 +255,10 @@ const MainScreen = ({ user }) => {
       default:
         break;
     }
-    localStorage.setItem("transactions", JSON.stringify({ credits, payments, sales, withdrawals }));
+    localStorage.setItem(
+      "transactions",
+      JSON.stringify({ credits, payments, sales, withdrawals })
+    );
   };
 
   const handleConfirm = () => {
@@ -285,7 +291,7 @@ const MainScreen = ({ user }) => {
 
     // Add 3 hours to the date
     date.setHours(date.getHours() + 3);
-    console.log(date, 'date')
+    console.log(date, "date");
     try {
       const { data: balanceData, error: balanceError } = await supabase
         .from("dailybalances")
@@ -306,30 +312,56 @@ const MainScreen = ({ user }) => {
       for (const credit of credits) {
         const { data, error: creditError } = await supabase
           .from("credits")
-          .upsert([{ ...credit, date, user_id: selectedUser, branch_id: selectedBranch }], {
-            onConflict: ["id"],
-          });
+          .upsert(
+            [
+              {
+                ...credit,
+                date,
+                user_id: selectedUser,
+                branch_id: selectedBranch,
+              },
+            ],
+            {
+              onConflict: ["id"],
+            }
+          );
         if (creditError) throw creditError;
       }
 
       for (const payment of payments) {
         const { error: paymentError } = await supabase
           .from("payments")
-          .insert([{ ...payment, date, user_id: selectedUser, branch_id: selectedBranch }]);
+          .insert([
+            {
+              ...payment,
+              date,
+              user_id: selectedUser,
+              branch_id: selectedBranch,
+            },
+          ]);
         if (paymentError) throw paymentError;
       }
 
       for (const sale of sales) {
         const { error: saleError } = await supabase
           .from("sales")
-          .insert([{ ...sale, date, user_id: selectedUser, branch_id: selectedBranch }]);
+          .insert([
+            { ...sale, date, user_id: selectedUser, branch_id: selectedBranch },
+          ]);
         if (saleError) throw saleError;
       }
 
       for (const withdrawal of withdrawals) {
         const { error: withdrawalError } = await supabase
           .from("daniel")
-          .insert([{ ...withdrawal, date, user_id: selectedUser, branch_id: selectedBranch }]);
+          .insert([
+            {
+              ...withdrawal,
+              date,
+              user_id: selectedUser,
+              branch_id: selectedBranch,
+            },
+          ]);
         if (withdrawalError) throw withdrawalError;
       }
 
@@ -342,6 +374,7 @@ const MainScreen = ({ user }) => {
       setOpeningBalances({ usd: closing_usd, lbp: closing_lbp });
       setIsModalVisible(false);
       localStorage.clear();
+      window.location.reload();
     } catch (error) {
       toast.error("Error submitting transactions: " + error.message);
     }
@@ -432,7 +465,10 @@ const MainScreen = ({ user }) => {
         break;
     }
     setIsEditModalVisible(false);
-    localStorage.setItem("transactions", JSON.stringify({ credits, payments, sales, withdrawals }));
+    localStorage.setItem(
+      "transactions",
+      JSON.stringify({ credits, payments, sales, withdrawals })
+    );
     message.success("Transaction updated successfully!");
   };
 
@@ -454,7 +490,10 @@ const MainScreen = ({ user }) => {
                 },
               ]}
             >
-              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+              <InputNumber
+                formatter={formatNumber}
+                style={{ width: "100%" }}
+              />
             </Form.Item>
             <Form.Item
               name="amount_lbp"
@@ -466,7 +505,10 @@ const MainScreen = ({ user }) => {
                 },
               ]}
             >
-              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+              <InputNumber
+                formatter={formatNumber}
+                style={{ width: "100%" }}
+              />
             </Form.Item>
             <Form.Item
               name="person"
@@ -495,7 +537,10 @@ const MainScreen = ({ user }) => {
                 },
               ]}
             >
-              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+              <InputNumber
+                formatter={formatNumber}
+                style={{ width: "100%" }}
+              />
             </Form.Item>
             <Form.Item
               name="amount_lbp"
@@ -507,12 +552,14 @@ const MainScreen = ({ user }) => {
                 },
               ]}
             >
-              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+              <InputNumber
+                formatter={formatNumber}
+                style={{ width: "100%" }}
+              />
             </Form.Item>
             <Form.Item
               name="reference_number"
               label="Reference Number"
-
             >
               <Input placeholder="Add a Reference Number" />
             </Form.Item>
@@ -558,7 +605,10 @@ const MainScreen = ({ user }) => {
                 },
               ]}
             >
-              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+              <InputNumber
+                formatter={formatNumber}
+                style={{ width: "100%" }}
+              />
             </Form.Item>
             <Form.Item
               name="amount_lbp"
@@ -570,7 +620,10 @@ const MainScreen = ({ user }) => {
                 },
               ]}
             >
-              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+              <InputNumber
+                formatter={formatNumber}
+                style={{ width: "100%" }}
+              />
             </Form.Item>
           </>
         );
@@ -587,7 +640,10 @@ const MainScreen = ({ user }) => {
                 },
               ]}
             >
-              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+              <InputNumber
+                formatter={formatNumber}
+                style={{ width: "100%" }}
+              />
             </Form.Item>
             <Form.Item
               name="amount_lbp"
@@ -599,7 +655,10 @@ const MainScreen = ({ user }) => {
                 },
               ]}
             >
-              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+              <InputNumber
+                formatter={formatNumber}
+                style={{ width: "100%" }}
+              />
             </Form.Item>
           </>
         );
@@ -618,7 +677,10 @@ const MainScreen = ({ user }) => {
       <ToastContainer />
       <Content style={{ padding: "0 16px" }}>
         <Tabs defaultActiveKey="1">
-          <Item tab="Main View" key="1">
+          <Item
+            tab="Main View"
+            key="1"
+          >
             <div className="site-layout-content">
               <h1>Financial Tracking App</h1>
               <Row gutter={16}>
@@ -626,13 +688,20 @@ const MainScreen = ({ user }) => {
                   <Card
                     title="Opening Balance"
                     actions={[
-                      <Button type="primary" onClick={handleConfirm} disabled={isConfirmed}>
+                      <Button
+                        type="primary"
+                        onClick={handleConfirm}
+                        disabled={isConfirmed}
+                      >
                         Confirm
                       </Button>,
                     ]}
                   >
                     <Typography.Title level={5}>
-                      Date: {openingDate ? openingDate.toISOString().split("T")[0] : 'Loading...'}
+                      Date:{" "}
+                      {openingDate
+                        ? openingDate.toISOString().split("T")[0]
+                        : "Loading..."}
                     </Typography.Title>
                     <Typography.Title level={5}>
                       Closing USD: {formatNumber(openingBalances.usd)}
@@ -651,7 +720,11 @@ const MainScreen = ({ user }) => {
               {isConfirmed && (
                 <>
                   <Row gutter={16}>
-                    <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
+                    <Col
+                      xs={24}
+                      sm={12}
+                      style={{ marginTop: "20px" }}
+                    >
                       <Card title="Credits">
                         <Form
                           form={creditForm}
@@ -711,7 +784,7 @@ const MainScreen = ({ user }) => {
                           <Form.Item
                             name="status"
                             label="Status"
-                            initialValue={false}  // Default to "Unpaid" (false)
+                            initialValue={false} // Default to "Unpaid" (false)
                             rules={[
                               {
                                 required: true,
@@ -725,7 +798,10 @@ const MainScreen = ({ user }) => {
                             </Radio.Group>
                           </Form.Item>
                           <Form.Item>
-                            <Button type="primary" htmlType="submit">
+                            <Button
+                              type="primary"
+                              htmlType="submit"
+                            >
                               Add Credit
                             </Button>
                           </Form.Item>
@@ -737,7 +813,10 @@ const MainScreen = ({ user }) => {
                             onChange={handleUnpaidCreditSelection}
                           >
                             {unpaidCredits.map((credit) => (
-                              <Option key={credit.id} value={credit.id}>
+                              <Option
+                                key={credit.id}
+                                value={credit.id}
+                              >
                                 {`USD: ${formatNumber(
                                   credit.amount_usd
                                 )}, LBP: ${formatNumber(
@@ -781,13 +860,17 @@ const MainScreen = ({ user }) => {
                                 <>
                                   <Button
                                     type="link"
-                                    onClick={() => handleEdit({ ...record, type: "credit" })}
+                                    onClick={() =>
+                                      handleEdit({ ...record, type: "credit" })
+                                    }
                                   >
                                     Edit
                                   </Button>
                                   <Popconfirm
                                     title="Sure to delete?"
-                                    onConfirm={() => handleDelete("credit", record.key)}
+                                    onConfirm={() =>
+                                      handleDelete("credit", record.key)
+                                    }
                                   >
                                     <Button type="link">Delete</Button>
                                   </Popconfirm>
@@ -799,8 +882,14 @@ const MainScreen = ({ user }) => {
                         />
                       </Card>
                     </Col>
-                    <Col xs={24} sm={12}>
-                      <Card title="Payments" style={{ marginTop: 20 }}>
+                    <Col
+                      xs={24}
+                      sm={12}
+                    >
+                      <Card
+                        title="Payments"
+                        style={{ marginTop: 20 }}
+                      >
                         <Form
                           form={paymentForm}
                           onFinish={(values) => {
@@ -885,7 +974,10 @@ const MainScreen = ({ user }) => {
                             </Select>
                           </Form.Item>
                           <Form.Item>
-                            <Button type="primary" htmlType="submit">
+                            <Button
+                              type="primary"
+                              htmlType="submit"
+                            >
                               Add Payment
                             </Button>
                           </Form.Item>
@@ -928,13 +1020,17 @@ const MainScreen = ({ user }) => {
                                 <>
                                   <Button
                                     type="link"
-                                    onClick={() => handleEdit({ ...record, type: "payment" })}
+                                    onClick={() =>
+                                      handleEdit({ ...record, type: "payment" })
+                                    }
                                   >
                                     Edit
                                   </Button>
                                   <Popconfirm
                                     title="Sure to delete?"
-                                    onConfirm={() => handleDelete("payment", record.key)}
+                                    onConfirm={() =>
+                                      handleDelete("payment", record.key)
+                                    }
                                   >
                                     <Button type="link">Delete</Button>
                                   </Popconfirm>
@@ -948,8 +1044,14 @@ const MainScreen = ({ user }) => {
                     </Col>
                   </Row>
                   <Row gutter={16}>
-                    <Col xs={24} sm={12}>
-                      <Card title="Sales" style={{ marginTop: "20px" }}>
+                    <Col
+                      xs={24}
+                      sm={12}
+                    >
+                      <Card
+                        title="Sales"
+                        style={{ marginTop: "20px" }}
+                      >
                         <Form
                           form={saleForm}
                           onFinish={(values) => {
@@ -992,7 +1094,10 @@ const MainScreen = ({ user }) => {
                             />
                           </Form.Item>
                           <Form.Item>
-                            <Button type="primary" htmlType="submit">
+                            <Button
+                              type="primary"
+                              htmlType="submit"
+                            >
                               Add Sale
                             </Button>
                           </Form.Item>
@@ -1019,13 +1124,17 @@ const MainScreen = ({ user }) => {
                                 <>
                                   <Button
                                     type="link"
-                                    onClick={() => handleEdit({ ...record, type: "sale" })}
+                                    onClick={() =>
+                                      handleEdit({ ...record, type: "sale" })
+                                    }
                                   >
                                     Edit
                                   </Button>
                                   <Popconfirm
                                     title="Sure to delete?"
-                                    onConfirm={() => handleDelete("sale", record.key)}
+                                    onConfirm={() =>
+                                      handleDelete("sale", record.key)
+                                    }
                                   >
                                     <Button type="link">Delete</Button>
                                   </Popconfirm>
@@ -1037,8 +1146,14 @@ const MainScreen = ({ user }) => {
                         />
                       </Card>
                     </Col>
-                    <Col xs={24} sm={12}>
-                      <Card title="Daniel" style={{ marginTop: "20px" }}>
+                    <Col
+                      xs={24}
+                      sm={12}
+                    >
+                      <Card
+                        title="Daniel"
+                        style={{ marginTop: "20px" }}
+                      >
                         <Form
                           form={danielForm}
                           onFinish={(values) => {
@@ -1081,7 +1196,10 @@ const MainScreen = ({ user }) => {
                             />
                           </Form.Item>
                           <Form.Item>
-                            <Button type="primary" htmlType="submit">
+                            <Button
+                              type="primary"
+                              htmlType="submit"
+                            >
                               Add Withdrawal (Daniel)
                             </Button>
                           </Form.Item>
@@ -1108,13 +1226,20 @@ const MainScreen = ({ user }) => {
                                 <>
                                   <Button
                                     type="link"
-                                    onClick={() => handleEdit({ ...record, type: "withdrawal" })}
+                                    onClick={() =>
+                                      handleEdit({
+                                        ...record,
+                                        type: "withdrawal",
+                                      })
+                                    }
                                   >
                                     Edit
                                   </Button>
                                   <Popconfirm
                                     title="Sure to delete?"
-                                    onConfirm={() => handleDelete("withdrawal", record.key)}
+                                    onConfirm={() =>
+                                      handleDelete("withdrawal", record.key)
+                                    }
                                   >
                                     <Button type="link">Delete</Button>
                                   </Popconfirm>
@@ -1128,7 +1253,10 @@ const MainScreen = ({ user }) => {
                     </Col>
                   </Row>
                   <Row gutter={16}>
-                    <Col xs={24} sm={12}>
+                    <Col
+                      xs={24}
+                      sm={12}
+                    >
                       <Card
                         title="Totals"
                         style={{ marginTop: "20px" }}
@@ -1158,7 +1286,10 @@ const MainScreen = ({ user }) => {
                         </Form.Item>
                       </Card>
                     </Col>
-                    <Col xs={24} sm={12}>
+                    <Col
+                      xs={24}
+                      sm={12}
+                    >
                       <Card
                         title="Closing Balance"
                         style={{ marginTop: "20px" }}
@@ -1201,7 +1332,10 @@ const MainScreen = ({ user }) => {
                               onChange={(value) => setSelectedBranch(value)}
                             >
                               {branches.map((branch) => (
-                                <Option key={branch.id} value={branch.id}>
+                                <Option
+                                  key={branch.id}
+                                  value={branch.id}
+                                >
                                   {branch.name}
                                 </Option>
                               ))}
@@ -1214,8 +1348,9 @@ const MainScreen = ({ user }) => {
                           <Typography.Text
                             style={{
                               color:
-                                totalsAfterDanielUSD.toLocaleString() < CLOSING_ALLOWED &&
-                                  totalsAfterDanielUSD.toLocaleString() >= 0
+                                totalsAfterDanielUSD.toLocaleString() <
+                                  CLOSING_ALLOWED &&
+                                totalsAfterDanielUSD.toLocaleString() >= 0
                                   ? "green"
                                   : "red",
                             }}
@@ -1239,7 +1374,10 @@ const MainScreen = ({ user }) => {
                               onChange={(value) => setSelectedUser(value)}
                             >
                               {users.map((user) => (
-                                <Option key={user.id} value={user.id}>
+                                <Option
+                                  key={user.id}
+                                  value={user.id}
+                                >
                                   {user.name}
                                 </Option>
                               ))}
@@ -1292,10 +1430,52 @@ const MainScreen = ({ user }) => {
               >
                 <p>Are you sure you want to close the day?</p>
                 <p>Summary of added data:</p>
-                <p>Credits Total: {credits.reduce((acc, credit) => acc + credit.amount_usd + credit.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
-                <p>Payments Total: {payments.reduce((acc, payment) => acc + payment.amount_usd + payment.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
-                <p>Sales Total: {sales.reduce((acc, sale) => acc + sale.amount_usd + sale.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
-                <p>Withdrawals Total: {withdrawals.reduce((acc, withdrawal) => acc + withdrawal.amount_usd + withdrawal.amount_lbp / exchangeRate, 0).toLocaleString()}</p>
+                <p>
+                  Credits Total:{" "}
+                  {credits
+                    .reduce(
+                      (acc, credit) =>
+                        acc +
+                        credit.amount_usd +
+                        credit.amount_lbp / exchangeRate,
+                      0
+                    )
+                    .toLocaleString()}
+                </p>
+                <p>
+                  Payments Total:{" "}
+                  {payments
+                    .reduce(
+                      (acc, payment) =>
+                        acc +
+                        payment.amount_usd +
+                        payment.amount_lbp / exchangeRate,
+                      0
+                    )
+                    .toLocaleString()}
+                </p>
+                <p>
+                  Sales Total:{" "}
+                  {sales
+                    .reduce(
+                      (acc, sale) =>
+                        acc + sale.amount_usd + sale.amount_lbp / exchangeRate,
+                      0
+                    )
+                    .toLocaleString()}
+                </p>
+                <p>
+                  Withdrawals Total:{" "}
+                  {withdrawals
+                    .reduce(
+                      (acc, withdrawal) =>
+                        acc +
+                        withdrawal.amount_usd +
+                        withdrawal.amount_lbp / exchangeRate,
+                      0
+                    )
+                    .toLocaleString()}
+                </p>
               </Modal>
               <Modal
                 title="Edit Transaction"
@@ -1313,10 +1493,16 @@ const MainScreen = ({ user }) => {
                   onFinish={handleEditSubmit}
                   form={editForm}
                 >
-                  <Form.Item name="key" hidden>
+                  <Form.Item
+                    name="key"
+                    hidden
+                  >
                     <Input />
                   </Form.Item>
-                  <Form.Item name="type" hidden>
+                  <Form.Item
+                    name="type"
+                    hidden
+                  >
                     <Input />
                   </Form.Item>
                   {renderEditFormFields()}
@@ -1325,7 +1511,10 @@ const MainScreen = ({ user }) => {
             </div>
           </Item>
           {user.role === "admin" && (
-            <Item tab="Admin Dashboard" key="2">
+            <Item
+              tab="Admin Dashboard"
+              key="2"
+            >
               <div style={{ marginTop: "40px" }}>
                 <h2>Admin Dashboard</h2>
                 <p>Switch to enable user to enter date manually</p>
@@ -1346,11 +1535,17 @@ const MainScreen = ({ user }) => {
             </Item>
           )}
         </Tabs>
-        <Button type="danger" onClick={handleLogout}>
+        <Button
+          type="danger"
+          onClick={handleLogout}
+        >
           Logout
         </Button>
       </Content>
-      <Footer style={{ textAlign: "center" }}>Dekene Web App ©2024, Developed by <a href='https://danielawde9.com'>Daniel Awde</a></Footer>
+      <Footer style={{ textAlign: "center" }}>
+        Dekene Web App ©2024, Developed by{" "}
+        <a href="https://danielawde9.com">Daniel Awde</a>
+      </Footer>
     </Layout>
   );
 };

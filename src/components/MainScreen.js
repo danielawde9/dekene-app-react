@@ -810,6 +810,9 @@ const MainScreen = ({ user }) => {
                             });
                             paymentForm.resetFields();
                           }}
+                          initialValues={{
+                            reference_number: "ref", // Set the default value here
+                          }}
                         >
                           <Form.Item
                             name="amount_usd"
@@ -845,7 +848,12 @@ const MainScreen = ({ user }) => {
                           <Form.Item
                             name="reference_number"
                             label="Reference Number"
-
+                            rules={[
+                              {
+                                required: true,
+                                message: "Please input amount in USD!",
+                              },
+                            ]}
                           >
                             <Input placeholder="Add a Reference Number" />
                           </Form.Item>

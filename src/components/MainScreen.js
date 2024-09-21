@@ -19,13 +19,13 @@ import {
   Input,
   message,
   Radio,
+  Spin,
 } from "antd";
 import { createClient } from "@supabase/supabase-js";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import TransactionTable from "./TransactionTable";
 import moment from "moment";
-import Item from "antd/es/list/Item";
 import { CLOSING_ALLOWED, DEFAULT_EXCHANGE_RATE } from "../utils/constant";
 
 const { Content, Footer } = Layout;
@@ -53,13 +53,14 @@ const MainScreen = ({ user }) => {
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [selectedBranch, setSelectedBranch] = useState(0);
+  const [selectedBranch, setSelectedBranch] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [unpaidCredits, setUnpaidCredits] = useState([]);
   const [closedDates, setClosedDates] = useState([]);
   const [editingItem, setEditingItem] = useState(null);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [loadingBranches, setLoadingBranches] = useState(true);
   const [creditForm] = Form.useForm();
   const [paymentForm] = Form.useForm();
   const [saleForm] = Form.useForm();
@@ -67,87 +68,25 @@ const MainScreen = ({ user }) => {
   const [editForm] = Form.useForm();
 
   useEffect(() => {
-    // Fetch data on mount
-    const fetchData = async () => {
-      // Fetch opening balances
-      const { data: balanceData, error: balanceError } = await supabase
-        .from("dailybalances")
-        .select("*")
-        .order("date", { ascending: false })
-        .limit(1);
-
-      if (balanceError) {
-        toast.error("Error fetching opening balances: " + balanceError.message);
-      } else {
-        const lastDayBalance = balanceData[0];
-        setOpeningBalances({
-          usd: lastDayBalance ? lastDayBalance.closing_usd : 0,
-          lbp: lastDayBalance ? lastDayBalance.closing_lbp : 0,
-        });
-        const adjustedDate = moment(lastDayBalance.date)
-          .add(1, "days")
-          .toDate();
-        setOpeningDate(adjustedDate);
-      }
-
-      // Fetch closed dates
-      const { data: closedDatesData, error: closedDatesError } = await supabase
-        .from("dailybalances")
-        .select("date");
-
-      if (closedDatesError) {
-        toast.error("Error fetching closed dates: " + closedDatesError.message);
-      } else {
-        const dates = closedDatesData.map((item) =>
-          moment(item.date).format("YYYY-MM-DD")
-        );
-        setClosedDates(dates);
-      }
-
-      // Fetch users
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("*");
-      if (userError) {
-        toast.error("Error fetching users: " + userError.message);
-      } else {
-        setUsers(userData);
-      }
-
-      // Fetch branches
-      const { data: branchData, error: branchError } = await supabase
-        .from("branches")
-        .select("*");
-      if (branchError) {
-        toast.error("Error fetching branches: " + branchError.message);
-      } else {
-        setBranches(branchData);
-      }
-
-      // Fetch settings
-      const { data: settingsData, error: settingsError } = await supabase
-        .from("settings")
-        .select("*")
-        .limit(1);
-      if (settingsError) {
-        toast.error("Error fetching settings: " + settingsError.message);
-      } else if (settingsData.length > 0) {
-        setManualDateEnabled(settingsData[0].manual_date_enabled);
-      }
-
-      const { data, error } = await supabase
-        .from("credits")
-        .select("*")
-        .eq("status", false); // Fetch unpaid credits
-
-      if (error) {
-        toast.error("Error fetching unpaid credits: " + error.message);
-      } else {
-        setUnpaidCredits(data);
+    // Fetch branches on mount
+    const fetchBranches = async () => {
+      try {
+        const { data: branchData, error: branchError } = await supabase
+          .from("branches")
+          .select("*");
+        if (branchError) {
+          toast.error("Error fetching branches: " + branchError.message);
+        } else {
+          setBranches(branchData);
+        }
+      } catch (error) {
+        toast.error("Error fetching branches: " + error.message);
+      } finally {
+        setLoadingBranches(false);
       }
     };
 
-    fetchData();
+    fetchBranches();
 
     // Load data from local storage
     const storedTransactions = localStorage.getItem("transactions");
@@ -160,6 +99,95 @@ const MainScreen = ({ user }) => {
       setWithdrawals(withdrawals || []);
     }
   }, []);
+
+  useEffect(() => {
+    if (selectedBranch !== null) {
+      const fetchDataForBranch = async () => {
+        try {
+          // Fetch opening balances for selectedBranch
+          const { data: balanceData, error: balanceError } = await supabase
+            .from("dailybalances")
+            .select("*")
+            .eq("branch_id", selectedBranch)
+            .order("date", { ascending: false })
+            .limit(1);
+
+          if (balanceError) {
+            toast.error(
+              "Error fetching opening balances: " + balanceError.message
+            );
+            setOpeningBalances({ usd: 0, lbp: 0 });
+          } else {
+            const lastDayBalance = balanceData[0];
+            setOpeningBalances({
+              usd: lastDayBalance ? lastDayBalance.closing_usd : 0,
+              lbp: lastDayBalance ? lastDayBalance.closing_lbp : 0,
+            });
+            const adjustedDate = lastDayBalance
+              ? moment(lastDayBalance.date).add(1, "days").toDate()
+              : new Date();
+            setOpeningDate(adjustedDate);
+          }
+
+          // Fetch closed dates for selectedBranch
+          const { data: closedDatesData, error: closedDatesError } =
+            await supabase
+              .from("dailybalances")
+              .select("date")
+              .eq("branch_id", selectedBranch);
+
+          if (closedDatesError) {
+            toast.error(
+              "Error fetching closed dates: " + closedDatesError.message
+            );
+          } else {
+            const dates = closedDatesData.map((item) =>
+              moment(item.date).format("YYYY-MM-DD")
+            );
+            setClosedDates(dates);
+          }
+
+          // Fetch unpaid credits for selectedBranch
+          const { data, error } = await supabase
+            .from("credits")
+            .select("*")
+            .eq("status", false)
+            .eq("branch_id", selectedBranch);
+
+          if (error) {
+            toast.error("Error fetching unpaid credits: " + error.message);
+          } else {
+            setUnpaidCredits(data);
+          }
+
+          // Fetch users
+          const { data: userData, error: userError } = await supabase
+            .from("users")
+            .select("*");
+          if (userError) {
+            toast.error("Error fetching users: " + userError.message);
+          } else {
+            setUsers(userData);
+          }
+
+          // Fetch settings
+          const { data: settingsData, error: settingsError } = await supabase
+            .from("settings")
+            .select("*")
+            .limit(1);
+          if (settingsError) {
+            toast.error("Error fetching settings: " + settingsError.message);
+          } else if (settingsData.length > 0) {
+            setManualDateEnabled(settingsData[0].manual_date_enabled);
+          }
+        } catch (error) {
+          toast.error("Error fetching data: " + error.message);
+        }
+      };
+
+      fetchDataForBranch();
+    }
+  }, [selectedBranch]);
 
   useEffect(() => {
     // Calculate totals whenever transactions change
@@ -280,10 +308,6 @@ const MainScreen = ({ user }) => {
     setIsModalVisible(true);
   };
 
-  // useEffect(() => {
-  //   console.log(selectedDate, 'date')
-  // }, [selectedDate])
-
   const handleConfirmSubmit = async () => {
     const { usd: closing_usd, lbp: closing_lbp } = closingBalances;
     // Ensure the date is a Date object
@@ -291,7 +315,6 @@ const MainScreen = ({ user }) => {
 
     // Add 3 hours to the date
     date.setHours(date.getHours() + 3);
-    console.log(date, "date");
     try {
       const { data: balanceData, error: balanceError } = await supabase
         .from("dailybalances")
@@ -329,25 +352,21 @@ const MainScreen = ({ user }) => {
       }
 
       for (const payment of payments) {
-        const { error: paymentError } = await supabase
-          .from("payments")
-          .insert([
-            {
-              ...payment,
-              date,
-              user_id: selectedUser,
-              branch_id: selectedBranch,
-            },
-          ]);
+        const { error: paymentError } = await supabase.from("payments").insert([
+          {
+            ...payment,
+            date,
+            user_id: selectedUser,
+            branch_id: selectedBranch,
+          },
+        ]);
         if (paymentError) throw paymentError;
       }
 
       for (const sale of sales) {
-        const { error: saleError } = await supabase
-          .from("sales")
-          .insert([
-            { ...sale, date, user_id: selectedUser, branch_id: selectedBranch },
-          ]);
+        const { error: saleError } = await supabase.from("sales").insert([
+          { ...sale, date, user_id: selectedUser, branch_id: selectedBranch },
+        ]);
         if (saleError) throw saleError;
       }
 
@@ -557,10 +576,7 @@ const MainScreen = ({ user }) => {
                 style={{ width: "100%" }}
               />
             </Form.Item>
-            <Form.Item
-              name="reference_number"
-              label="Reference Number"
-            >
+            <Form.Item name="reference_number" label="Reference Number">
               <Input placeholder="Add a Reference Number" />
             </Form.Item>
             <Form.Item
@@ -672,15 +688,60 @@ const MainScreen = ({ user }) => {
     window.location.reload();
   };
 
+  if (loadingBranches) {
+    return (
+      <div style={{ textAlign: "center", marginTop: "50px" }}>
+        <Spin size="large" tip="Loading branches..." />
+      </div>
+    );
+  }
+
+  if (selectedBranch === null) {
+    return (
+      <Layout className="layout">
+        <ToastContainer />
+        <Content style={{ padding: "0 16px" }}>
+          <div className="site-layout-content">
+            <h1>Select Branch</h1>
+            <Form>
+              <Form.Item
+                name="branch_id"
+                label="Branch"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please select a branch!",
+                  },
+                ]}
+              >
+                <Select
+                  placeholder="Select a branch"
+                  onChange={(value) => setSelectedBranch(value)}
+                >
+                  {branches.map((branch) => (
+                    <Option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Form>
+          </div>
+        </Content>
+        <Footer style={{ textAlign: "center" }}>
+          Dekene Web App ©2024, Developed by{" "}
+          <a href="https://danielawde9.com">Daniel Awde</a>
+        </Footer>
+      </Layout>
+    );
+  }
+
   return (
     <Layout className="layout">
       <ToastContainer />
       <Content style={{ padding: "0 16px" }}>
         <Tabs defaultActiveKey="1">
-          <Item
-            tab="Main View"
-            key="1"
-          >
+          <Tabs.TabPane tab="Main View" key="1">
             <div className="site-layout-content">
               <h1>Financial Tracking App</h1>
               <Row gutter={16}>
@@ -1350,7 +1411,7 @@ const MainScreen = ({ user }) => {
                               color:
                                 totalsAfterDanielUSD.toLocaleString() <
                                   CLOSING_ALLOWED &&
-                                totalsAfterDanielUSD.toLocaleString() >= 0
+                                  totalsAfterDanielUSD.toLocaleString() >= 0
                                   ? "green"
                                   : "red",
                             }}
@@ -1493,28 +1554,19 @@ const MainScreen = ({ user }) => {
                   onFinish={handleEditSubmit}
                   form={editForm}
                 >
-                  <Form.Item
-                    name="key"
-                    hidden
-                  >
+                  <Form.Item name="key" hidden>
                     <Input />
                   </Form.Item>
-                  <Form.Item
-                    name="type"
-                    hidden
-                  >
+                  <Form.Item name="type" hidden>
                     <Input />
                   </Form.Item>
                   {renderEditFormFields()}
                 </Form>
               </Modal>
             </div>
-          </Item>
+          </Tabs.TabPane>
           {user.role === "admin" && (
-            <Item
-              tab="Admin Dashboard"
-              key="2"
-            >
+            <Tabs.TabPane tab="Admin Dashboard" key="2">
               <div style={{ marginTop: "40px" }}>
                 <h2>Admin Dashboard</h2>
                 <p>Switch to enable user to enter date manually</p>
@@ -1532,19 +1584,23 @@ const MainScreen = ({ user }) => {
                   exchangeRate={DEFAULT_EXCHANGE_RATE}
                 />
               </div>
-            </Item>
+            </Tabs.TabPane>
           )}
         </Tabs>
+
+      </Content>
+      <Footer style={{ textAlign: "center", display: "flex", "gap": "2rem", justifyContent: "center", alignItems: "center" }}>
+        <div>
+          Dekene Web App ©2024, Developed by{" "}
+          <a href="https://danielawde9.com">Daniel Awde</a>
+
+        </div>
         <Button
-          type="danger"
+          type="primary"
           onClick={handleLogout}
         >
           Logout
         </Button>
-      </Content>
-      <Footer style={{ textAlign: "center" }}>
-        Dekene Web App ©2024, Developed by{" "}
-        <a href="https://danielawde9.com">Daniel Awde</a>
       </Footer>
     </Layout>
   );

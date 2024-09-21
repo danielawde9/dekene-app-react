@@ -700,33 +700,37 @@ const MainScreen = ({ user }) => {
     return (
       <Layout className="layout">
         <ToastContainer />
-        <Content style={{ padding: "0 16px" }}>
-          <div className="site-layout-content">
-            <h1>Select Branch</h1>
-            <Form>
-              <Form.Item
-                name="branch_id"
-                label="Branch"
-                rules={[
-                  {
-                    required: true,
-                    message: "Please select a branch!",
-                  },
-                ]}
-              >
-                <Select
-                  placeholder="Select a branch"
-                  onChange={(value) => setSelectedBranch(value)}
+        <Content style={{ padding: "16px" }}>
+          <Card>
+
+            <div className="site-layout-content">
+              <h1>Select Branch</h1>
+              <Form>
+                <Form.Item
+                  name="branch_id"
+                  label="Branch"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Please select a branch!",
+                    },
+                  ]}
                 >
-                  {branches.map((branch) => (
-                    <Option key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Form>
-          </div>
+                  <Select
+                    placeholder="Select a branch"
+                    onChange={(value) => setSelectedBranch(value)}
+                  >
+                    {branches.map((branch) => (
+                      <Option key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Form>
+            </div>
+          </Card>
+
         </Content>
         <Footer style={{ textAlign: "center" }}>
           Dekene Web App ©2024, Developed by{" "}
@@ -789,6 +793,12 @@ const MainScreen = ({ user }) => {
                       <Card title="Credits">
                         <Form
                           form={creditForm}
+                          initialValues={{
+                            amount_usd: 0,
+                            amount_lbp: 0,
+                            status: false, // Default to "Unpaid"
+                          }}
+
                           onFinish={(values) => {
                             addTransaction("credit", {
                               ...values,
@@ -801,7 +811,6 @@ const MainScreen = ({ user }) => {
                           <Form.Item
                             name="amount_usd"
                             label="Amount USD"
-                            initialValue={0}
                             rules={[
                               {
                                 required: true,
@@ -817,7 +826,6 @@ const MainScreen = ({ user }) => {
                           <Form.Item
                             name="amount_lbp"
                             label="Amount LBP"
-                            initialValue={0}
                             rules={[
                               {
                                 required: true,
@@ -845,7 +853,6 @@ const MainScreen = ({ user }) => {
                           <Form.Item
                             name="status"
                             label="Status"
-                            initialValue={false} // Default to "Unpaid" (false)
                             rules={[
                               {
                                 required: true,
@@ -953,6 +960,14 @@ const MainScreen = ({ user }) => {
                       >
                         <Form
                           form={paymentForm}
+                          initialValues={{
+                            amount_usd: 0,
+                            amount_lbp: 0,
+                            reference_number: "ref",
+                            cause: "",
+                            deduction_source: "current",
+                          }}
+
                           onFinish={(values) => {
                             addTransaction("payment", {
                               ...values,
@@ -960,14 +975,11 @@ const MainScreen = ({ user }) => {
                             });
                             paymentForm.resetFields();
                           }}
-                          initialValues={{
-                            reference_number: "ref", // Set the default value here
-                          }}
+
                         >
                           <Form.Item
                             name="amount_usd"
                             label="Amount USD"
-                            initialValue={0}
                             rules={[
                               {
                                 required: true,
@@ -1115,6 +1127,10 @@ const MainScreen = ({ user }) => {
                       >
                         <Form
                           form={saleForm}
+                          initialValues={{
+                            amount_usd: 0,
+                            amount_lbp: 0,
+                          }}
                           onFinish={(values) => {
                             addTransaction("sale", {
                               ...values,
@@ -1126,7 +1142,6 @@ const MainScreen = ({ user }) => {
                           <Form.Item
                             name="amount_usd"
                             label="Amount USD"
-                            initialValue={0}
                             rules={[
                               {
                                 required: true,
@@ -1217,6 +1232,10 @@ const MainScreen = ({ user }) => {
                       >
                         <Form
                           form={danielForm}
+                          initialValues={{
+                            amount_usd: 0,
+                            amount_lbp: 0,
+                          }}
                           onFinish={(values) => {
                             addTransaction("withdrawal", {
                               ...values,
@@ -1228,7 +1247,6 @@ const MainScreen = ({ user }) => {
                           <Form.Item
                             name="amount_usd"
                             label="Amount USD"
-                            initialValue={0}
                             rules={[
                               {
                                 required: true,
@@ -1488,56 +1506,142 @@ const MainScreen = ({ user }) => {
                 open={isModalVisible}
                 onOk={handleConfirmSubmit}
                 onCancel={() => setIsModalVisible(false)}
+                width={800} // Increase the width if needed
               >
                 <p>Are you sure you want to close the day?</p>
                 <p>Summary of added data:</p>
-                <p>
-                  Credits Total:{" "}
-                  {credits
-                    .reduce(
-                      (acc, credit) =>
-                        acc +
-                        credit.amount_usd +
-                        credit.amount_lbp / exchangeRate,
-                      0
-                    )
-                    .toLocaleString()}
-                </p>
-                <p>
-                  Payments Total:{" "}
-                  {payments
-                    .reduce(
-                      (acc, payment) =>
-                        acc +
-                        payment.amount_usd +
-                        payment.amount_lbp / exchangeRate,
-                      0
-                    )
-                    .toLocaleString()}
-                </p>
-                <p>
-                  Sales Total:{" "}
-                  {sales
-                    .reduce(
-                      (acc, sale) =>
-                        acc + sale.amount_usd + sale.amount_lbp / exchangeRate,
-                      0
-                    )
-                    .toLocaleString()}
-                </p>
-                <p>
-                  Withdrawals Total:{" "}
-                  {withdrawals
-                    .reduce(
-                      (acc, withdrawal) =>
-                        acc +
-                        withdrawal.amount_usd +
-                        withdrawal.amount_lbp / exchangeRate,
-                      0
-                    )
-                    .toLocaleString()}
-                </p>
+
+                {/* Credits Table */}
+                {credits.length > 0 && (
+                  <>
+                    <Typography.Title level={5}>Credits</Typography.Title>
+                    <Table
+                      dataSource={credits}
+                      columns={[
+                        {
+                          title: "Amount USD",
+                          dataIndex: "amount_usd",
+                          key: "amount_usd",
+                          render: formatNumber,
+                        },
+                        {
+                          title: "Amount LBP",
+                          dataIndex: "amount_lbp",
+                          key: "amount_lbp",
+                          render: formatNumber,
+                        },
+                        {
+                          title: "Person",
+                          dataIndex: "person",
+                          key: "person",
+                        },
+                        {
+                          title: "Status",
+                          dataIndex: "status",
+                          key: "status",
+                          render: (status) => (status ? "Paid" : "Unpaid"),
+                        },
+                      ]}
+                      pagination={false}
+                      rowKey="key"
+                    />
+                  </>
+                )}
+
+                {/* Payments Table */}
+                {payments.length > 0 && (
+                  <>
+                    <Typography.Title level={5}>Payments</Typography.Title>
+                    <Table
+                      dataSource={payments}
+                      columns={[
+                        {
+                          title: "Amount USD",
+                          dataIndex: "amount_usd",
+                          key: "amount_usd",
+                          render: formatNumber,
+                        },
+                        {
+                          title: "Amount LBP",
+                          dataIndex: "amount_lbp",
+                          key: "amount_lbp",
+                          render: formatNumber,
+                        },
+                        {
+                          title: "Reference Number",
+                          dataIndex: "reference_number",
+                          key: "reference_number",
+                        },
+                        {
+                          title: "Cause",
+                          dataIndex: "cause",
+                          key: "cause",
+                        },
+                        {
+                          title: "Deduction Source",
+                          dataIndex: "deduction_source",
+                          key: "deduction_source",
+                        },
+                      ]}
+                      pagination={false}
+                      rowKey="key"
+                    />
+                  </>
+                )}
+
+                {/* Sales Table */}
+                {sales.length > 0 && (
+                  <>
+                    <Typography.Title level={5}>Sales</Typography.Title>
+                    <Table
+                      dataSource={sales}
+                      columns={[
+                        {
+                          title: "Amount USD",
+                          dataIndex: "amount_usd",
+                          key: "amount_usd",
+                          render: formatNumber,
+                        },
+                        {
+                          title: "Amount LBP",
+                          dataIndex: "amount_lbp",
+                          key: "amount_lbp",
+                          render: formatNumber,
+                        },
+                      ]}
+                      pagination={false}
+                      rowKey="key"
+                    />
+                  </>
+                )}
+
+                {/* Withdrawals Table */}
+                {withdrawals.length > 0 && (
+                  <>
+                    <Typography.Title level={5}>Withdrawals</Typography.Title>
+                    <Table
+                      dataSource={withdrawals}
+                      columns={[
+                        {
+                          title: "Amount USD",
+                          dataIndex: "amount_usd",
+                          key: "amount_usd",
+                          render: formatNumber,
+                        },
+                        {
+                          title: "Amount LBP",
+                          dataIndex: "amount_lbp",
+                          key: "amount_lbp",
+                          render: formatNumber,
+                        },
+                      ]}
+                      pagination={false}
+                      rowKey="key"
+                    />
+                  </>
+                )}
               </Modal>
+
               <Modal
                 title="Edit Transaction"
                 open={isEditModalVisible}
@@ -1593,7 +1697,6 @@ const MainScreen = ({ user }) => {
         <div>
           Dekene Web App ©2024, Developed by{" "}
           <a href="https://danielawde9.com">Daniel Awde</a>
-
         </div>
         <Button
           type="primary"

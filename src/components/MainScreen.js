@@ -53,7 +53,10 @@ const MainScreen = ({ user }) => {
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [selectedBranch, setSelectedBranch] = useState(null);
+  const [selectedBranch, setSelectedBranch] = useState(() => {
+    const savedBranch = localStorage.getItem('selectedBranch');
+    return savedBranch ? JSON.parse(savedBranch) : null;
+  });
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [unpaidCredits, setUnpaidCredits] = useState([]);
@@ -67,6 +70,13 @@ const MainScreen = ({ user }) => {
   const [danielForm] = Form.useForm();
   const [editForm] = Form.useForm();
 
+  useEffect(() => {
+    if (selectedBranch !== null) {
+      localStorage.setItem('selectedBranch', JSON.stringify(selectedBranch));
+    } else {
+      localStorage.removeItem('selectedBranch');
+    }
+  }, [selectedBranch]);
   useEffect(() => {
     // Fetch branches on mount
     const fetchBranches = async () => {

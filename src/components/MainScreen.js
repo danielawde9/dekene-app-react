@@ -18,7 +18,6 @@ import {
   Popconfirm,
   Input,
   message,
-  Radio,
   Spin,
   Collapse,
 } from "antd";
@@ -263,7 +262,7 @@ const MainScreen = ({ user }) => {
       totalWithdrawalsLBP;
 
     return { usd: netUSD, lbp: netLBP };
-  }, [transactions, actualOpeningBalances, exchangeRate]);
+  }, [transactions, actualOpeningBalances]);
 
   const addTransaction = (transaction) => {
     setTransactions((prev) => {
@@ -394,7 +393,7 @@ const MainScreen = ({ user }) => {
       }
 
       // Process credits separately
-      const { credits, credit_payments, payments, sales, withdrawals } = transactions;
+      const { credits, credit_payments } = transactions;
 
       // Handle new credits
       if (credits && credits.length > 0) {
@@ -548,7 +547,7 @@ const MainScreen = ({ user }) => {
 
   <Modal
     title="Pay Credit"
-    visible={isPayCreditModalVisible}
+    open={isPayCreditModalVisible}
     onOk={() => {
       payCreditForm.validateFields().then((values) => {
         handlePayCreditSubmit(values);
@@ -1000,7 +999,7 @@ const MainScreen = ({ user }) => {
                 />
                 <Modal
                   title="Confirm Opening Balances"
-                  visible={isOpeningModalVisible}
+                  open={isOpeningModalVisible}
                   onOk={handleOpeningConfirmSubmit}
                   onCancel={() => setIsOpeningModalVisible(false)}
                 >
@@ -1033,7 +1032,7 @@ const MainScreen = ({ user }) => {
                 {/* Pay Credit Modal */}
                 <Modal
                   title="Pay Credit"
-                  visible={isPayCreditModalVisible}
+                  open={isPayCreditModalVisible}
                   onOk={() => {
                     payCreditForm.validateFields().then((values) => {
                       handlePayCreditSubmit(values);
@@ -1481,8 +1480,8 @@ const TransactionCard = ({
         </Form.Item>
       </Form>
       {type === TRANSACTION_TYPES.CREDITS && (
-        <Collapse defaultActiveKey={["1"]} style={{ marginTop: 20 }}>
-          <Collapse.Panel header="Unpaid Credits" key="1">
+        <Collapse defaultActiveKey={[]} style={{ marginTop: 20, marginBottom: 20, padding: 0 }}>
+          <Collapse.Panel header="Unpaid Credits" key="1" style={{ padding: 0 }}>
             <Table
               dataSource={unpaidCredits}
               columns={[

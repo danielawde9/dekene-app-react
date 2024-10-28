@@ -24,9 +24,9 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import TransactionTable from "./TransactionTable";
+import TransactionTable from "./TransactionTable"; // Replace with your actual component
 import moment from "moment";
-import { CLOSING_ALLOWED, DEFAULT_EXCHANGE_RATE } from "../utils/constant";
+import { CLOSING_ALLOWED, DEFAULT_EXCHANGE_RATE } from "../utils/constant"; // Replace with your actual constants
 
 const { Content, Footer } = Layout;
 const { Option } = Select;
@@ -39,6 +39,7 @@ const formatNumber = (value) => new Intl.NumberFormat().format(value);
 
 const TRANSACTION_TYPES = {
   CREDITS: "credits",
+  CREDIT_PAYMENTS: "credit_payments",
   PAYMENTS: "payments",
   SALES: "sales",
   WITHDRAWALS: "withdrawals",
@@ -59,6 +60,7 @@ const MainScreen = ({ user }) => {
       ? JSON.parse(storedTransactions)
       : {
         credits: [],
+        credit_payments: [],
         payments: [],
         sales: [],
         withdrawals: [],
@@ -90,6 +92,11 @@ const MainScreen = ({ user }) => {
     withdrawalForm: Form.useForm()[0],
     editForm: Form.useForm()[0],
   });
+
+  // State for Pay Credit Modal
+  const [isPayCreditModalVisible, setIsPayCreditModalVisible] = useState(false);
+  const [currentCredit, setCurrentCredit] = useState(null);
+  const [payCreditForm] = Form.useForm();
 
   useEffect(() => {
     if (selectedBranch !== null) {
@@ -203,57 +210,78 @@ const MainScreen = ({ user }) => {
   }, [transactions]);
 
   const totals = useMemo(() => {
-    const { credits, payments, sales, withdrawals } = transactions;
+    const { credits, credit_payments, payments, sales, withdrawals } = transactions;
 
-    const totalCreditsUSD = credits.reduce(
-      (acc, credit) => acc + credit.amount_usd,
-      0
-    );
-    const totalCreditsLBP = credits.reduce(
-      (acc, credit) => acc + credit.amount_lbp,
-      0
-    );
-    const totalPaymentsUSD = payments.reduce(
-      (acc, payment) =>
-        payment.deduction_source !== "daniel" ? acc + payment.amount_usd : acc,
-      0
-    );
-    const totalPaymentsLBP = payments.reduce(
-      (acc, payment) =>
-        payment.deduction_source !== "daniel" ? acc + payment.amount_lbp : acc,
-      0
-    );
-    const totalSalesUSD = sales.reduce((acc, sale) => acc + sale.amount_usd, 0);
-    const totalSalesLBP = sales.reduce((acc, sale) => acc + sale.amount_lbp, 0);
-    const totalWithdrawalsUSD = withdrawals.reduce(
-      (acc, withdrawal) => acc + withdrawal.amount_usd,
-      0
-    );
-    const totalWithdrawalsLBP = withdrawals.reduce(
-      (acc, withdrawal) => acc + withdrawal.amount_lbp,
-      0
-    );
+    // Calculate totals for new credits
+    const totalNewCreditsUSD =
+      credits?.reduce((acc, credit) => acc + credit.amount_usd, 0) || 0;
+    const totalNewCreditsLBP =
+      credits?.reduce((acc, credit) => acc + credit.amount_lbp, 0) || 0;
+
+    // Calculate totals for credit payments
+    const totalCreditPaymentsUSD =
+      credit_payments?.reduce((acc, payment) => acc + payment.amount_usd, 0) || 0;
+    const totalCreditPaymentsLBP =
+      credit_payments?.reduce((acc, payment) => acc + payment.amount_lbp, 0) || 0;
+
+    // Existing calculations for payments, sales, withdrawals...
+    const totalPaymentsUSD =
+      payments?.reduce(
+        (acc, payment) =>
+          payment.deduction_source !== "daniel" ? acc + payment.amount_usd : acc,
+        0
+      ) || 0;
+    const totalPaymentsLBP =
+      payments?.reduce(
+        (acc, payment) =>
+          payment.deduction_source !== "daniel" ? acc + payment.amount_lbp : acc,
+        0
+      ) || 0;
+    const totalSalesUSD =
+      sales?.reduce((acc, sale) => acc + sale.amount_usd, 0) || 0;
+    const totalSalesLBP =
+      sales?.reduce((acc, sale) => acc + sale.amount_lbp, 0) || 0;
+    const totalWithdrawalsUSD =
+      withdrawals?.reduce((acc, withdrawal) => acc + withdrawal.amount_usd, 0) || 0;
+    const totalWithdrawalsLBP =
+      withdrawals?.reduce((acc, withdrawal) => acc + withdrawal.amount_lbp, 0) || 0;
 
     const netUSD =
       actualOpeningBalances.usd +
-      totalSalesUSD -
-      totalCreditsUSD -
+      totalSalesUSD +
+      totalCreditPaymentsUSD -
+      totalNewCreditsUSD -
       totalPaymentsUSD -
       totalWithdrawalsUSD;
     const netLBP =
       actualOpeningBalances.lbp +
-      totalSalesLBP -
-      totalCreditsLBP -
+      totalSalesLBP +
+      totalCreditPaymentsLBP -
+      totalNewCreditsLBP -
       totalPaymentsLBP -
       totalWithdrawalsLBP;
+
     return { usd: netUSD, lbp: netLBP };
-  }, [transactions, actualOpeningBalances]);
+  }, [transactions, actualOpeningBalances, exchangeRate]);
 
   const addTransaction = (transaction) => {
-    setTransactions((prev) => ({
-      ...prev,
-      [transaction.type]: [...prev[transaction.type], transaction],
-    }));
+    setTransactions((prev) => {
+      const updatedTransactions = { ...prev };
+      if (transaction.type === TRANSACTION_TYPES.CREDIT_PAYMENTS) {
+        // Add to credit payments
+        if (!updatedTransactions.credit_payments) {
+          updatedTransactions.credit_payments = [];
+        }
+        updatedTransactions.credit_payments.push(transaction);
+      } else {
+        // Existing logic
+        updatedTransactions[transaction.type] = [
+          ...prev[transaction.type],
+          transaction,
+        ];
+      }
+      return updatedTransactions;
+    });
   };
 
   const handleDelete = (type, key) => {
@@ -324,11 +352,11 @@ const MainScreen = ({ user }) => {
     const { usd: closing_usd, lbp: closing_lbp } = closingBalances;
     const date = new Date(manualDateEnabled ? selectedDate : currentDate);
     date.setHours(date.getHours() + 3);
-  
+
     // Calculate differences
     const difference_usd = closing_usd - totals.usd;
     const difference_lbp = closing_lbp - totals.lbp;
-  
+
     try {
       // Insert into dailybalances
       const { error: balanceError } = await supabase
@@ -344,9 +372,9 @@ const MainScreen = ({ user }) => {
             branch_id: selectedBranch,
           },
         ]);
-  
+
       if (balanceError) throw balanceError;
-  
+
       // Insert into closing_differences if there's a difference
       if (difference_usd !== 0 || difference_lbp !== 0) {
         const { error: diffError } = await supabase
@@ -360,31 +388,88 @@ const MainScreen = ({ user }) => {
               difference_lbp,
             },
           ]);
-  
+
         if (diffError) throw diffError;
       }
-  
-      // Insert transactions into their respective tables
-      for (const typeKey of Object.keys(transactions)) {
-        const tableName = typeKey === "withdrawals" ? "daniel" : typeKey;
-  
-        // Exclude 'type' and 'key' from each transaction item
-        const dataToInsert = transactions[typeKey].map(({ type, key, ...item }) => ({
+
+      // Process credits separately
+      const { credits, credit_payments, payments, sales, withdrawals } = transactions;
+
+      // Handle new credits
+      if (credits && credits.length > 0) {
+        const newCreditsData = credits.map(({ type, key, ...item }) => ({
           ...item,
           date,
           user_id: selectedUser,
           branch_id: selectedBranch,
         }));
-  
-        const { error } = await supabase.from(tableName).insert(dataToInsert);
+
+        const { error } = await supabase.from("credits").insert(newCreditsData);
         if (error) throw error;
       }
-  
+
+      // Handle credit payments
+      if (credit_payments && credit_payments.length > 0) {
+        for (const payment of credit_payments) {
+          const { amount_usd, amount_lbp, credit_id } = payment;
+
+          // Fetch the current credit
+          const { data: creditData, error: fetchError } = await supabase
+            .from("credits")
+            .select("*")
+            .eq("id", credit_id)
+            .single();
+
+          if (fetchError) throw fetchError;
+
+          const newPaidAmountUSD = creditData.paid_amount_usd + amount_usd;
+          const newPaidAmountLBP = creditData.paid_amount_lbp + amount_lbp;
+
+          const isFullyPaidUSD = newPaidAmountUSD >= creditData.amount_usd;
+          const isFullyPaidLBP = newPaidAmountLBP >= creditData.amount_lbp;
+          const status = isFullyPaidUSD && isFullyPaidLBP;
+
+          // Update the credit record
+          const { error: updateError } = await supabase
+            .from("credits")
+            .update({
+              paid_amount_usd: newPaidAmountUSD,
+              paid_amount_lbp: newPaidAmountLBP,
+              status,
+            })
+            .eq("id", credit_id);
+
+          if (updateError) throw updateError;
+        }
+      }
+
+      // Handle other transactions (payments, sales, withdrawals)
+      const transactionTypes = ["payments", "sales", "withdrawals"];
+
+      for (const typeKey of transactionTypes) {
+        const tableName = typeKey === "withdrawals" ? "daniel" : typeKey;
+
+        const dataToInsert = transactions[typeKey]?.map(
+          ({ type, key, ...item }) => ({
+            ...item,
+            date,
+            user_id: selectedUser,
+            branch_id: selectedBranch,
+          })
+        );
+
+        if (dataToInsert && dataToInsert.length > 0) {
+          const { error } = await supabase.from(tableName).insert(dataToInsert);
+          if (error) throw error;
+        }
+      }
+
       toast.success("Daily balance and transactions submitted successfully!");
-  
+
       // Reset transactions and update opening balances
       setTransactions({
         credits: [],
+        credit_payments: [],
         payments: [],
         sales: [],
         withdrawals: [],
@@ -398,7 +483,6 @@ const MainScreen = ({ user }) => {
       toast.error("Error submitting transactions: " + error.message);
     }
   };
-  
 
   const handleSwitchChange = async (checked) => {
     setManualDateEnabled(checked);
@@ -413,19 +497,52 @@ const MainScreen = ({ user }) => {
     }
   };
 
-  const handleUnpaidCreditSelection = (selectedCredits) => {
-    const updatedCredits = unpaidCredits.filter((credit) =>
-      selectedCredits.includes(credit.id)
+  const handlePayCredit = (credit) => {
+    setCurrentCredit(credit);
+    setIsPayCreditModalVisible(true);
+    payCreditForm.resetFields();
+  };
+
+  const handlePayCreditSubmit = (values) => {
+    const { pay_amount_usd = 0, pay_amount_lbp = 0 } = values;
+
+    // Create a transaction for the payment
+    const transaction = {
+      key: Date.now(),
+      type: TRANSACTION_TYPES.CREDIT_PAYMENTS,
+      person: currentCredit.person,
+      amount_usd: pay_amount_usd,
+      amount_lbp: pay_amount_lbp,
+      credit_id: currentCredit.id,
+    };
+
+    addTransaction(transaction);
+
+    // Update the unpaidCredits list
+    setUnpaidCredits((prevUnpaidCredits) =>
+      prevUnpaidCredits
+        .map((credit) => {
+          if (credit.id === currentCredit.id) {
+            const newPaidAmountUSD = credit.paid_amount_usd + pay_amount_usd;
+            const newPaidAmountLBP = credit.paid_amount_lbp + pay_amount_lbp;
+
+            const isPaidInUSD = newPaidAmountUSD >= credit.amount_usd;
+            const isPaidInLBP = newPaidAmountLBP >= credit.amount_lbp;
+            const isFullyPaid = isPaidInUSD && isPaidInLBP;
+
+            return {
+              ...credit,
+              paid_amount_usd: newPaidAmountUSD,
+              paid_amount_lbp: newPaidAmountLBP,
+              status: isFullyPaid,
+            };
+          }
+          return credit;
+        })
+        .filter((credit) => !credit.status) // Remove fully paid credits
     );
 
-    updatedCredits.forEach((credit) => {
-      credit.status = true;
-      addTransaction({ ...credit, key: Date.now(), type: TRANSACTION_TYPES.CREDITS });
-    });
-
-    setUnpaidCredits((prev) =>
-      prev.filter((credit) => !selectedCredits.includes(credit.id))
-    );
+    setIsPayCreditModalVisible(false);
   };
 
   const calculateTotalsAfterDaniel = () => {
@@ -514,21 +631,6 @@ const MainScreen = ({ user }) => {
             >
               <Input />
             </Form.Item>
-            <Form.Item
-              name="status"
-              label="Status"
-              rules={[
-                {
-                  required: true,
-                  message: "Please select the status!",
-                },
-              ]}
-            >
-              <Radio.Group>
-                <Radio value={true}>Paid</Radio>
-                <Radio value={false}>Unpaid</Radio>
-              </Radio.Group>
-            </Form.Item>
           </>
         );
       case TRANSACTION_TYPES.PAYMENTS:
@@ -544,10 +646,7 @@ const MainScreen = ({ user }) => {
                 },
               ]}
             >
-              <InputNumber
-                formatter={formatNumber}
-                style={{ width: "100%" }}
-              />
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
             </Form.Item>
             <Form.Item
               name="amount_lbp"
@@ -559,10 +658,7 @@ const MainScreen = ({ user }) => {
                 },
               ]}
             >
-              <InputNumber
-                formatter={formatNumber}
-                style={{ width: "100%" }}
-              />
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
             </Form.Item>
             <Form.Item name="reference_number" label="Reference Number">
               <Input placeholder="Add a Reference Number" />
@@ -610,10 +706,7 @@ const MainScreen = ({ user }) => {
                 },
               ]}
             >
-              <InputNumber
-                formatter={formatNumber}
-                style={{ width: "100%" }}
-              />
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
             </Form.Item>
             <Form.Item
               name="amount_lbp"
@@ -625,10 +718,48 @@ const MainScreen = ({ user }) => {
                 },
               ]}
             >
-              <InputNumber
-                formatter={formatNumber}
-                style={{ width: "100%" }}
-              />
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+            </Form.Item>
+          </>
+        );
+      case TRANSACTION_TYPES.CREDIT_PAYMENTS:
+        return (
+          <>
+            <Form.Item
+              name="amount_usd"
+              label="Amount USD"
+              rules={[
+                {
+                  required: true,
+                  message: "Please input amount in USD!",
+                },
+              ]}
+            >
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name="amount_lbp"
+              label="Amount LBP"
+              rules={[
+                {
+                  required: true,
+                  message: "Please input amount in LBP!",
+                },
+              ]}
+            >
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name="person"
+              label="Person"
+              rules={[
+                {
+                  required: true,
+                  message: "Please input the person!",
+                },
+              ]}
+            >
+              <Input />
             </Form.Item>
           </>
         );
@@ -745,7 +876,7 @@ const MainScreen = ({ user }) => {
                     <TransactionForms
                       addTransaction={addTransaction}
                       unpaidCredits={unpaidCredits}
-                      handleUnpaidCreditSelection={handleUnpaidCreditSelection}
+                      handlePayCredit={handlePayCredit}
                       transactions={transactions}
                       handleDelete={handleDelete}
                       handleEdit={handleEdit}
@@ -818,6 +949,87 @@ const MainScreen = ({ user }) => {
                     </Form.Item>
                   </Form>
                 </Modal>
+
+                {/* Pay Credit Modal */}
+                <Modal
+                  title="Pay Credit"
+                  visible={isPayCreditModalVisible}
+                  onOk={() => {
+                    payCreditForm.validateFields().then((values) => {
+                      handlePayCreditSubmit(values);
+                      payCreditForm.resetFields();
+                    });
+                  }}
+                  onCancel={() => setIsPayCreditModalVisible(false)}
+                >
+                  <Form form={payCreditForm}>
+                    <Form.Item label="Person">
+                      <Input value={currentCredit?.person} disabled />
+                    </Form.Item>
+                    <Form.Item label="Total Amount USD">
+                      <Input value={formatNumber(currentCredit?.amount_usd)} disabled />
+                    </Form.Item>
+                    <Form.Item label="Total Amount LBP">
+                      <Input value={formatNumber(currentCredit?.amount_lbp)} disabled />
+                    </Form.Item>
+                    <Form.Item label="Paid Amount USD">
+                      <Input
+                        value={formatNumber(currentCredit?.paid_amount_usd)}
+                        disabled
+                      />
+                    </Form.Item>
+                    <Form.Item label="Paid Amount LBP">
+                      <Input
+                        value={formatNumber(currentCredit?.paid_amount_lbp)}
+                        disabled
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      name="pay_amount_usd"
+                      label="Pay Amount USD"
+                      rules={[
+                        {
+                          required:
+                            currentCredit?.amount_usd -
+                            currentCredit?.paid_amount_usd >
+                            0,
+                          message: "Please input the amount in USD!",
+                        },
+                      ]}
+                    >
+                      <InputNumber
+                        min={0}
+                        max={
+                          currentCredit?.amount_usd - currentCredit?.paid_amount_usd
+                        }
+                        formatter={formatNumber}
+                        style={{ width: "100%" }}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      name="pay_amount_lbp"
+                      label="Pay Amount LBP"
+                      rules={[
+                        {
+                          required:
+                            currentCredit?.amount_lbp -
+                            currentCredit?.paid_amount_lbp >
+                            0,
+                          message: "Please input the amount in LBP!",
+                        },
+                      ]}
+                    >
+                      <InputNumber
+                        min={0}
+                        max={
+                          currentCredit?.amount_lbp - currentCredit?.paid_amount_lbp
+                        }
+                        formatter={formatNumber}
+                        style={{ width: "100%" }}
+                      />
+                    </Form.Item>
+                  </Form>
+                </Modal>
               </div>
             </Tabs.TabPane>
             {user.role === "admin" && (
@@ -863,12 +1075,10 @@ const MainScreen = ({ user }) => {
 
 export default MainScreen;
 
-/* Additional Components */
-
 const TransactionForms = ({
   addTransaction,
   unpaidCredits,
-  handleUnpaidCreditSelection,
+  handlePayCredit,
   transactions,
   handleDelete,
   handleEdit,
@@ -884,7 +1094,7 @@ const TransactionForms = ({
             form={forms.creditForm}
             addTransaction={addTransaction}
             unpaidCredits={unpaidCredits}
-            handleUnpaidCreditSelection={handleUnpaidCreditSelection}
+            handlePayCredit={handlePayCredit}
             data={transactions.credits}
             handleDelete={handleDelete}
             handleEdit={handleEdit}
@@ -936,7 +1146,7 @@ const TransactionCard = ({
   form,
   addTransaction,
   unpaidCredits,
-  handleUnpaidCreditSelection,
+  handlePayCredit,
   data,
   handleDelete,
   handleEdit,
@@ -985,17 +1195,24 @@ const TransactionCard = ({
             <Form.Item
               name="status"
               label="Status"
-              rules={[
-                {
-                  required: true,
-                  message: "Please select the status!",
-                },
-              ]}
+              initialValue={false}
+              hidden
             >
-              <Radio.Group>
-                <Radio value={true}>Paid</Radio>
-                <Radio value={false}>Unpaid</Radio>
-              </Radio.Group>
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name="paid_amount_usd"
+              initialValue={0}
+              hidden
+            >
+              <InputNumber />
+            </Form.Item>
+            <Form.Item
+              name="paid_amount_lbp"
+              initialValue={0}
+              hidden
+            >
+              <InputNumber />
             </Form.Item>
           </>
         );
@@ -1145,12 +1362,6 @@ const TransactionCard = ({
             dataIndex: "person",
             key: "person",
           },
-          {
-            title: "Status",
-            dataIndex: "status",
-            key: "status",
-            render: (status) => (status ? "Paid" : "Unpaid"),
-          },
           actionColumn,
         ];
       case TRANSACTION_TYPES.PAYMENTS:
@@ -1170,6 +1381,16 @@ const TransactionCard = ({
             title: "Deduction Source",
             dataIndex: "deduction_source",
             key: "deduction_source",
+          },
+          actionColumn,
+        ];
+      case TRANSACTION_TYPES.CREDIT_PAYMENTS:
+        return [
+          ...baseColumns,
+          {
+            title: "Person",
+            dataIndex: "person",
+            key: "person",
           },
           actionColumn,
         ];
@@ -1196,21 +1417,66 @@ const TransactionCard = ({
         </Form.Item>
       </Form>
       {type === TRANSACTION_TYPES.CREDITS && (
-        <Form.Item label="Unpaid Credits">
-          <Select
-            mode="multiple"
-            placeholder="Select unpaid credits to mark as paid"
-            onChange={handleUnpaidCreditSelection}
-          >
-            {unpaidCredits.map((credit) => (
-              <Option key={credit.id} value={credit.id}>
-                {`USD: ${formatNumber(credit.amount_usd)}, LBP: ${formatNumber(
-                  credit.amount_lbp
-                )}, Person: ${credit.person}`}
-              </Option>
-            ))}
-          </Select>
-        </Form.Item>
+        <>
+          <Typography.Title level={5}>Unpaid Credits</Typography.Title>
+          <Table
+            dataSource={unpaidCredits}
+            columns={[
+              {
+                title: "Person",
+                dataIndex: "person",
+                key: "person",
+              },
+              {
+                title: "Total Amount USD",
+                dataIndex: "amount_usd",
+                key: "amount_usd",
+                render: formatNumber,
+              },
+              {
+                title: "Total Amount LBP",
+                dataIndex: "amount_lbp",
+                key: "amount_lbp",
+                render: formatNumber,
+              },
+              {
+                title: "Paid Amount USD",
+                dataIndex: "paid_amount_usd",
+                key: "paid_amount_usd",
+                render: formatNumber,
+              },
+              {
+                title: "Paid Amount LBP",
+                dataIndex: "paid_amount_lbp",
+                key: "paid_amount_lbp",
+                render: formatNumber,
+              },
+              {
+                title: "Remaining Amount USD",
+                key: "remaining_usd",
+                render: (text, record) =>
+                  formatNumber(record.amount_usd - record.paid_amount_usd),
+              },
+              {
+                title: "Remaining Amount LBP",
+                key: "remaining_lbp",
+                render: (text, record) =>
+                  formatNumber(record.amount_lbp - record.paid_amount_lbp),
+              },
+              {
+                title: "Action",
+                key: "action",
+                render: (_, record) => (
+                  <Button type="primary" onClick={() => handlePayCredit(record)}>
+                    Pay
+                  </Button>
+                ),
+              },
+            ]}
+            rowKey="id"
+            pagination={false}
+          />
+        </>
       )}
       <Table
         dataSource={data}

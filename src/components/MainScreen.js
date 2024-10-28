@@ -20,6 +20,7 @@ import {
   message,
   Radio,
   Spin,
+  Collapse,
 } from "antd";
 import { createClient } from "@supabase/supabase-js";
 import { ToastContainer, toast } from "react-toastify";
@@ -544,6 +545,85 @@ const MainScreen = ({ user }) => {
 
     setIsPayCreditModalVisible(false);
   };
+
+  <Modal
+    title="Pay Credit"
+    visible={isPayCreditModalVisible}
+    onOk={() => {
+      payCreditForm.validateFields().then((values) => {
+        handlePayCreditSubmit(values);
+        payCreditForm.resetFields();
+      });
+    }}
+    onCancel={() => setIsPayCreditModalVisible(false)}
+  >
+    <Form form={payCreditForm}>
+      <Form.Item label="Person">
+        <Input value={currentCredit?.person} disabled />
+      </Form.Item>
+      <Form.Item label="Total Amount USD">
+        <Input value={formatNumber(currentCredit?.amount_usd)} disabled />
+      </Form.Item>
+      <Form.Item label="Total Amount LBP">
+        <Input value={formatNumber(currentCredit?.amount_lbp)} disabled />
+      </Form.Item>
+      <Form.Item label="Paid Amount USD">
+        <Input value={formatNumber(currentCredit?.paid_amount_usd)} disabled />
+      </Form.Item>
+      <Form.Item label="Paid Amount LBP">
+        <Input value={formatNumber(currentCredit?.paid_amount_lbp)} disabled />
+      </Form.Item>
+      <Form.Item
+        name="pay_amount_usd"
+        label="Pay Amount USD"
+        rules={[
+          {
+            required: currentCredit?.amount_usd - currentCredit?.paid_amount_usd > 0,
+            message: "Please input the amount in USD!",
+          },
+          {
+            type: "number",
+            max: currentCredit?.amount_usd - currentCredit?.paid_amount_usd,
+            message: `Amount should not exceed ${formatNumber(
+              currentCredit?.amount_usd - currentCredit?.paid_amount_usd
+            )} USD`,
+          },
+        ]}
+      >
+        <InputNumber
+          min={0}
+          max={currentCredit?.amount_usd - currentCredit?.paid_amount_usd}
+          formatter={formatNumber}
+          style={{ width: "100%" }}
+        />
+      </Form.Item>
+      <Form.Item
+        name="pay_amount_lbp"
+        label="Pay Amount LBP"
+        rules={[
+          {
+            required: currentCredit?.amount_lbp - currentCredit?.paid_amount_lbp > 0,
+            message: "Please input the amount in LBP!",
+          },
+          {
+            type: "number",
+            max: currentCredit?.amount_lbp - currentCredit?.paid_amount_lbp,
+            message: `Amount should not exceed ${formatNumber(
+              currentCredit?.amount_lbp - currentCredit?.paid_amount_lbp
+            )} LBP`,
+          },
+        ]}
+      >
+        <InputNumber
+          min={0}
+          max={currentCredit?.amount_lbp - currentCredit?.paid_amount_lbp}
+          formatter={formatNumber}
+          style={{ width: "100%" }}
+        />
+      </Form.Item>
+    </Form>
+  </Modal>
+
 
   const calculateTotalsAfterDaniel = () => {
     const closingBalanceInUSD =
@@ -1140,6 +1220,7 @@ const TransactionForms = ({
   );
 };
 
+
 const TransactionCard = ({
   title,
   type,
@@ -1192,26 +1273,13 @@ const TransactionCard = ({
             >
               <Input placeholder="Add a person" />
             </Form.Item>
-            <Form.Item
-              name="status"
-              label="Status"
-              initialValue={false}
-              hidden
-            >
+            <Form.Item name="status" label="Status" initialValue={false} hidden>
               <Input />
             </Form.Item>
-            <Form.Item
-              name="paid_amount_usd"
-              initialValue={0}
-              hidden
-            >
+            <Form.Item name="paid_amount_usd" initialValue={0} hidden>
               <InputNumber />
             </Form.Item>
-            <Form.Item
-              name="paid_amount_lbp"
-              initialValue={0}
-              hidden
-            >
+            <Form.Item name="paid_amount_lbp" initialValue={0} hidden>
               <InputNumber />
             </Form.Item>
           </>
@@ -1343,16 +1411,12 @@ const TransactionCard = ({
           <Button type="link" onClick={() => handleEdit({ ...record, type })}>
             Edit
           </Button>
-          <Popconfirm
-            title="Sure to delete?"
-            onConfirm={() => handleDelete(type, record.key)}
-          >
+          <Popconfirm title="Sure to delete?" onConfirm={() => handleDelete(type, record.key)}>
             <Button type="link">Delete</Button>
           </Popconfirm>
         </>
       ),
     };
-
     switch (type) {
       case TRANSACTION_TYPES.CREDITS:
         return [
@@ -1417,73 +1481,43 @@ const TransactionCard = ({
         </Form.Item>
       </Form>
       {type === TRANSACTION_TYPES.CREDITS && (
-        <>
-          <Typography.Title level={5}>Unpaid Credits</Typography.Title>
-          <Table
-            dataSource={unpaidCredits}
-            columns={[
-              {
-                title: "Person",
-                dataIndex: "person",
-                key: "person",
-              },
-              {
-                title: "Total Amount USD",
-                dataIndex: "amount_usd",
-                key: "amount_usd",
-                render: formatNumber,
-              },
-              {
-                title: "Total Amount LBP",
-                dataIndex: "amount_lbp",
-                key: "amount_lbp",
-                render: formatNumber,
-              },
-              {
-                title: "Paid Amount USD",
-                dataIndex: "paid_amount_usd",
-                key: "paid_amount_usd",
-                render: formatNumber,
-              },
-              {
-                title: "Paid Amount LBP",
-                dataIndex: "paid_amount_lbp",
-                key: "paid_amount_lbp",
-                render: formatNumber,
-              },
-              {
-                title: "Remaining Amount USD",
-                key: "remaining_usd",
-                render: (text, record) =>
-                  formatNumber(record.amount_usd - record.paid_amount_usd),
-              },
-              {
-                title: "Remaining Amount LBP",
-                key: "remaining_lbp",
-                render: (text, record) =>
-                  formatNumber(record.amount_lbp - record.paid_amount_lbp),
-              },
-              {
-                title: "Action",
-                key: "action",
-                render: (_, record) => (
-                  <Button type="primary" onClick={() => handlePayCredit(record)}>
-                    Pay
-                  </Button>
-                ),
-              },
-            ]}
-            rowKey="id"
-            pagination={false}
-          />
-        </>
+        <Collapse defaultActiveKey={["1"]} style={{ marginTop: 20 }}>
+          <Collapse.Panel header="Unpaid Credits" key="1">
+            <Table
+              dataSource={unpaidCredits}
+              columns={[
+                { title: "Person", dataIndex: "person", key: "person" },
+                { title: "Total Amount USD", dataIndex: "amount_usd", key: "amount_usd", render: formatNumber },
+                { title: "Total Amount LBP", dataIndex: "amount_lbp", key: "amount_lbp", render: formatNumber },
+                { title: "Paid Amount USD", dataIndex: "paid_amount_usd", key: "paid_amount_usd", render: formatNumber },
+                { title: "Paid Amount LBP", dataIndex: "paid_amount_lbp", key: "paid_amount_lbp", render: formatNumber },
+                {
+                  title: "Remaining Amount USD",
+                  key: "remaining_usd",
+                  render: (text, record) => formatNumber(record.amount_usd - record.paid_amount_usd),
+                },
+                {
+                  title: "Remaining Amount LBP",
+                  key: "remaining_lbp",
+                  render: (text, record) => formatNumber(record.amount_lbp - record.paid_amount_lbp),
+                },
+                {
+                  title: "Action",
+                  key: "action",
+                  render: (_, record) => (
+                    <Button type="primary" onClick={() => handlePayCredit(record)}>
+                      Pay
+                    </Button>
+                  ),
+                },
+              ]}
+              rowKey="id"
+              pagination={false}
+            />
+          </Collapse.Panel>
+        </Collapse>
       )}
-      <Table
-        dataSource={data}
-        columns={columns}
-        rowKey="key"
-        scroll={{ x: true }}
-      />
+      <Table dataSource={data} columns={columns} rowKey="key" scroll={{ x: true }} />
     </Card>
   );
 };

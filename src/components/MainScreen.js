@@ -1117,7 +1117,7 @@ const TransactionForms = ({
   return (
     <>
       <Row gutter={16}>
-        <Col xs={24} sm={12} style={{ marginTop: "20px" }}>
+        <Col xs={24} sm={14}>
           <TransactionCard
             title="Credits"
             type={TRANSACTION_TYPES.CREDITS}
@@ -1130,7 +1130,7 @@ const TransactionForms = ({
             handleEdit={handleEdit}
           />
         </Col>
-        <Col xs={24} sm={12}>
+        <Col xs={24} sm={10}>
           <TransactionCard
             title="Payments"
             type={TRANSACTION_TYPES.PAYMENTS}

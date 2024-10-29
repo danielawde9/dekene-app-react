@@ -545,85 +545,6 @@ const MainScreen = ({ user }) => {
     setIsPayCreditModalVisible(false);
   };
 
-  <Modal
-    title="Pay Credit"
-    open={isPayCreditModalVisible}
-    onOk={() => {
-      payCreditForm.validateFields().then((values) => {
-        handlePayCreditSubmit(values);
-        payCreditForm.resetFields();
-      });
-    }}
-    onCancel={() => setIsPayCreditModalVisible(false)}
-  >
-    <Form form={payCreditForm}>
-      <Form.Item label="Person">
-        <Input value={currentCredit?.person} disabled />
-      </Form.Item>
-      <Form.Item label="Total Amount USD">
-        <Input value={formatNumber(currentCredit?.amount_usd)} disabled />
-      </Form.Item>
-      <Form.Item label="Total Amount LBP">
-        <Input value={formatNumber(currentCredit?.amount_lbp)} disabled />
-      </Form.Item>
-      <Form.Item label="Paid Amount USD">
-        <Input value={formatNumber(currentCredit?.paid_amount_usd)} disabled />
-      </Form.Item>
-      <Form.Item label="Paid Amount LBP">
-        <Input value={formatNumber(currentCredit?.paid_amount_lbp)} disabled />
-      </Form.Item>
-      <Form.Item
-        name="pay_amount_usd"
-        label="Pay Amount USD"
-        rules={[
-          {
-            required: currentCredit?.amount_usd - currentCredit?.paid_amount_usd > 0,
-            message: "Please input the amount in USD!",
-          },
-          {
-            type: "number",
-            max: currentCredit?.amount_usd - currentCredit?.paid_amount_usd,
-            message: `Amount should not exceed ${formatNumber(
-              currentCredit?.amount_usd - currentCredit?.paid_amount_usd
-            )} USD`,
-          },
-        ]}
-      >
-        <InputNumber
-          min={0}
-          max={currentCredit?.amount_usd - currentCredit?.paid_amount_usd}
-          formatter={formatNumber}
-          style={{ width: "100%" }}
-        />
-      </Form.Item>
-      <Form.Item
-        name="pay_amount_lbp"
-        label="Pay Amount LBP"
-        rules={[
-          {
-            required: currentCredit?.amount_lbp - currentCredit?.paid_amount_lbp > 0,
-            message: "Please input the amount in LBP!",
-          },
-          {
-            type: "number",
-            max: currentCredit?.amount_lbp - currentCredit?.paid_amount_lbp,
-            message: `Amount should not exceed ${formatNumber(
-              currentCredit?.amount_lbp - currentCredit?.paid_amount_lbp
-            )} LBP`,
-          },
-        ]}
-      >
-        <InputNumber
-          min={0}
-          max={currentCredit?.amount_lbp - currentCredit?.paid_amount_lbp}
-          formatter={formatNumber}
-          style={{ width: "100%" }}
-        />
-      </Form.Item>
-    </Form>
-  </Modal>
-
-
   const calculateTotalsAfterDaniel = () => {
     const closingBalanceInUSD =
       closingBalances.usd + closingBalances.lbp / exchangeRate;
@@ -847,11 +768,6 @@ const MainScreen = ({ user }) => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    window.location.reload();
-  };
-
   return (
     <Layout className="layout">
       <ToastContainer />
@@ -861,34 +777,7 @@ const MainScreen = ({ user }) => {
             <Spin size="large" tip="Loading branches..." />
           </div>
         ) : selectedBranch === null ? (
-          <Card>
-            <div className="site-layout-content">
-              <h1>Select Branch</h1>
-              <Form>
-                <Form.Item
-                  name="branch_id"
-                  label="Branch"
-                  rules={[
-                    {
-                      required: true,
-                      message: "Please select a branch!",
-                    },
-                  ]}
-                >
-                  <Select
-                    placeholder="Select a branch"
-                    onChange={(value) => setSelectedBranch(value)}
-                  >
-                    {branches.map((branch) => (
-                      <Option key={branch.id} value={branch.id}>
-                        {branch.name}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Form>
-            </div>
-          </Card>
+          <SelectBranchComponent branches={branches} setSelectedBranch={setSelectedBranch} />
         ) : (
           <Tabs defaultActiveKey="1">
             <Tabs.TabPane tab="Main View" key="1">
@@ -1131,28 +1020,45 @@ const MainScreen = ({ user }) => {
           </Tabs>
         )}
       </Content>
-      <Footer
-        style={{
-          textAlign: "center",
-          display: "flex",
-          gap: "2rem",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <div>
-          Dekene Web App ©2024, Developed by{" "}
-          <a href="https://danielawde9.com">Daniel Awde</a>
-        </div>
-        <Button type="primary" onClick={handleLogout}>
-          Logout
-        </Button>
-      </Footer>
+      <FooterComponent />
     </Layout>
   );
 };
 
 export default MainScreen;
+
+const SelectBranchComponent = ({ branches, setSelectedBranch }) => {
+  return (
+    <Card>
+      <div className="site-layout-content">
+        <h1>Select Branch</h1>
+        <Form>
+          <Form.Item
+            name="branch_id"
+            label="Branch"
+            rules={[
+              {
+                required: true,
+                message: "Please select a branch!",
+              },
+            ]}
+          >
+            <Select
+              placeholder="Select a branch"
+              onChange={(value) => setSelectedBranch(value)}
+            >
+              {branches.map((branch) => (
+                <Option key={branch.id} value={branch.id}>
+                  {branch.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Form>
+      </div>
+    </Card>
+  );
+}
 
 const TransactionForms = ({
   addTransaction,
@@ -1218,7 +1124,6 @@ const TransactionForms = ({
     </>
   );
 };
-
 
 const TransactionCard = ({
   title,
@@ -1982,3 +1887,28 @@ const OpeningDifferencesTable = ({ selectedBranch }) => {
   return <Table dataSource={data} columns={columns} rowKey="id" />;
 };
 
+const FooterComponent = () => {
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.reload();
+  };
+  return (
+    <Footer
+      style={{
+        textAlign: "center",
+        display: "flex",
+        gap: "2rem",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <div>
+        Dekene Web App ©2024, Developed by{" "}
+        <a href="https://danielawde9.com">Daniel Awde</a>
+      </div>
+      <Button type="primary" onClick={handleLogout}>
+        Logout
+      </Button>
+    </Footer>
+  );
+}

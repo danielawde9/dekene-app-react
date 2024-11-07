@@ -24,9 +24,9 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import TransactionTable from "./TransactionTable"; // Replace with your actual component
+import TransactionTable from "./TransactionTable";
 import moment from "moment";
-import { CLOSING_ALLOWED, DEFAULT_EXCHANGE_RATE } from "../utils/constant"; // Replace with your actual constants
+import { CLOSING_ALLOWED, DEFAULT_EXCHANGE_RATE } from "../utils/constant";
 
 const { Content, Footer } = Layout;
 const { Option } = Select;
@@ -336,7 +336,6 @@ const MainScreen = ({ user }) => {
 
         if (error) throw error;
 
-        // **Add the following code to create a credit transaction**
         // Create a credit transaction for the difference
         const selectedBranchName = branches.find(branch => branch.id === selectedBranch)?.name || "Unknown Branch";
         const selectedUserName = users.find(user => user.id === selectedUser)?.name || "Unknown User";

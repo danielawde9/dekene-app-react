@@ -16,6 +16,17 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import { formatNumber } from "../utils/formatNumber";
 import { ToastContainer, toast } from "react-toastify";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+import "react-toastify/dist/ReactToastify.css";
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseKey = process.env.REACT_APP_SUPABASE_KEY;
@@ -33,23 +44,19 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
   const [sales, setSales] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
   const [users, setUsers] = useState([]);
-  const [branches, setBranches] = useState([]); // State for branches
+  const [branches, setBranches] = useState([]);
+  const [chartData, setChartData] = useState([]);
   const [form] = Form.useForm();
   const [convertForm] = Form.useForm();
   const [balance, setBalance] = useState({ usd: 0, lbp: 0 });
   const [isLoading, setIsLoading] = useState(true);
-  const [conversionType, setConversionType] = useState("usd_to_lbp"); // Default conversion type
+  const [conversionType, setConversionType] = useState("usd_to_lbp");
   const [convertedAmount, setConvertedAmount] = useState(null);
 
   useEffect(() => {
-    fetchTransactions();
-    fetchCredits();
-    fetchPayments();
-    fetchDailyBalances();
-    fetchSales();
-    fetchWithdrawals();
     fetchUsers();
-    fetchBranches(); // Fetch branches on mount
+    fetchBranches();
+    fetchAllData();
   }, []);
 
   const fetchBranches = async () => {
@@ -64,122 +71,194 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
   const fetchUsers = async () => {
     const { data, error } = await supabase.from("users").select("*");
     if (error) {
-      console.error("Error fetching branches:", error);
+      console.error("Error fetching users:", error);
     } else {
       setUsers(data);
     }
   };
 
-  const fetchTransactions = async () => {
-    const { data: payments, error: paymentError } = await supabase
-      .from("payments")
-      .select("*")
-      .eq("deduction_source", "daniel");
-    const { data: withdrawals, error: danielError } = await supabase
-      .from("daniel")
-      .select("*");
-    const { data: conversions, error: conversionError } = await supabase
-      .from("conversions")
-      .select("*");
+  const fetchAllData = async () => {
+    try {
+      setIsLoading(true);
+      const [
+        { data: paymentsData, error: paymentsError },
+        { data: withdrawalsData, error: withdrawalsError },
+        { data: conversionsData, error: conversionsError },
+        { data: creditsData, error: creditsError },
+        { data: dailyBalancesData, error: dailyBalancesError },
+        { data: salesData, error: salesError },
+      ] = await Promise.all([
+        supabase.from("payments").select("*"),
+        supabase.from("daniel").select("*"),
+        supabase.from("conversions").select("*"),
+        supabase.from("credits").select("*"),
+        supabase.from("dailybalances").select("*"),
+        supabase.from("sales").select("*"),
+      ]);
 
-    if (paymentError || danielError || conversionError) {
-      console.error(
-        "Error fetching transactions:",
-        paymentError || danielError || conversionError
+      if (
+        paymentsError ||
+        withdrawalsError ||
+        conversionsError ||
+        creditsError ||
+        dailyBalancesError ||
+        salesError
+      ) {
+        console.error(
+          "Error fetching data",
+          paymentsError ||
+          withdrawalsError ||
+          conversionsError ||
+          creditsError ||
+          dailyBalancesError ||
+          salesError
+        );
+        return;
+      }
+
+      setPayments(paymentsData);
+      setWithdrawals(withdrawalsData);
+      setCredits(creditsData);
+      setDailyBalances(dailyBalancesData);
+      setSales(salesData);
+
+      const transactions = [
+        ...paymentsData.map((item) => ({ ...item, type: "Payment" })),
+        ...withdrawalsData.map((item) => ({ ...item, type: "Withdrawal" })),
+        ...conversionsData.map((item) => ({ ...item, type: "Conversion" })),
+      ];
+
+      transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      setTransactions(transactions);
+
+      const totalDanielUSD = withdrawalsData.reduce(
+        (acc, item) => acc + item.amount_usd,
+        0
       );
-      return;
+      const totalDanielLBP = withdrawalsData.reduce(
+        (acc, item) => acc + item.amount_lbp,
+        0
+      );
+      const totalPaymentsUSD = paymentsData.reduce(
+        (acc, item) => acc + item.amount_usd,
+        0
+      );
+      const totalPaymentsLBP = paymentsData.reduce(
+        (acc, item) => acc + item.amount_lbp,
+        0
+      );
+      const totalConversionsUSD = conversionsData.reduce(
+        (acc, item) =>
+          acc +
+          (item.original_currency === "USD" ? -item.amount_usd : item.amount_usd),
+        0
+      );
+      const totalConversionsLBP = conversionsData.reduce(
+        (acc, item) =>
+          acc +
+          (item.original_currency === "LBP" ? -item.amount_lbp : item.amount_lbp),
+        0
+      );
+
+      setBalance({
+        usd: totalDanielUSD - totalPaymentsUSD + totalConversionsUSD,
+        lbp: totalDanielLBP - totalPaymentsLBP + totalConversionsLBP,
+      });
+
+      prepareAggregatedData(
+        paymentsData,
+        withdrawalsData,
+        creditsData,
+        dailyBalancesData,
+        salesData
+      );
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error fetching data", error);
     }
+  };
 
-    const transactions = [
-      ...payments.map((item) => ({ ...item, type: "Payment" })),
-      ...withdrawals.map((item) => ({ ...item, type: "Withdrawal" })),
-      ...conversions.map((item) => ({ ...item, type: "Conversion" })),
-    ];
+  const prepareAggregatedData = (
+    paymentsData,
+    withdrawalsData,
+    creditsData,
+    dailyBalancesData,
+    salesData
+  ) => {
+    const dateMap = {};
 
-    transactions.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    setTransactions(transactions);
-
-    const totalDanielUSD = withdrawals.reduce(
-      (acc, item) => acc + item.amount_usd,
-      0
-    );
-    const totalDanielLBP = withdrawals.reduce(
-      (acc, item) => acc + item.amount_lbp,
-      0
-    );
-    const totalPaymentsUSD = payments.reduce(
-      (acc, item) => acc + item.amount_usd,
-      0
-    );
-    const totalPaymentsLBP = payments.reduce(
-      (acc, item) => acc + item.amount_lbp,
-      0
-    );
-    const totalConversionsUSD = conversions.reduce(
-      (acc, item) =>
-        acc +
-        (item.original_currency === "USD" ? -item.amount_usd : item.amount_usd),
-      0
-    );
-    const totalConversionsLBP = conversions.reduce(
-      (acc, item) =>
-        acc +
-        (item.original_currency === "LBP" ? -item.amount_lbp : item.amount_lbp),
-      0
-    );
-
-    setBalance({
-      usd: totalDanielUSD - totalPaymentsUSD + totalConversionsUSD,
-      lbp: totalDanielLBP - totalPaymentsLBP + totalConversionsLBP,
+    // Process dailyBalancesData
+    dailyBalancesData.forEach((item) => {
+      const date = item.date;
+      if (!dateMap[date]) {
+        dateMap[date] = { date };
+      }
+      dateMap[date].opening_usd = item.opening_usd;
+      dateMap[date].opening_lbp = item.opening_lbp;
+      dateMap[date].closing_usd = item.closing_usd;
+      dateMap[date].closing_lbp = item.closing_lbp;
     });
 
-    setIsLoading(false);
-  };
+    // Process paymentsData
+    paymentsData.forEach((item) => {
+      const date = item.date;
+      if (!dateMap[date]) {
+        dateMap[date] = { date };
+      }
+      if (!dateMap[date].payments_usd) dateMap[date].payments_usd = 0;
+      if (!dateMap[date].payments_lbp) dateMap[date].payments_lbp = 0;
 
-  const fetchCredits = async () => {
-    const { data, error } = await supabase.from("credits").select("*");
-    if (error) {
-      toast.error("Error fetching credits: " + error.message);
-    } else {
-      setCredits(data);
-    }
-  };
+      dateMap[date].payments_usd += item.amount_usd;
+      dateMap[date].payments_lbp += item.amount_lbp;
+    });
 
-  const fetchPayments = async () => {
-    const { data, error } = await supabase.from("payments").select("*");
-    if (error) {
-      toast.error("Error fetching payments: " + error.message);
-    } else {
-      setPayments(data);
-    }
-  };
+    // Process creditsData
+    creditsData.forEach((item) => {
+      const date = item.date;
+      if (!dateMap[date]) {
+        dateMap[date] = { date };
+      }
+      if (!dateMap[date].credits_usd) dateMap[date].credits_usd = 0;
+      if (!dateMap[date].credits_lbp) dateMap[date].credits_lbp = 0;
 
-  const fetchDailyBalances = async () => {
-    const { data, error } = await supabase.from("dailybalances").select("*");
-    if (error) {
-      toast.error("Error fetching daily balances: " + error.message);
-    } else {
-      setDailyBalances(data);
-    }
-  };
+      dateMap[date].credits_usd += item.amount_usd;
+      dateMap[date].credits_lbp += item.amount_lbp;
+    });
 
-  const fetchSales = async () => {
-    const { data, error } = await supabase.from("sales").select("*");
-    if (error) {
-      toast.error("Error fetching sales: " + error.message);
-    } else {
-      setSales(data);
-    }
-  };
+    // Process salesData
+    salesData.forEach((item) => {
+      const date = item.date;
+      if (!dateMap[date]) {
+        dateMap[date] = { date };
+      }
+      if (!dateMap[date].sales_usd) dateMap[date].sales_usd = 0;
+      if (!dateMap[date].sales_lbp) dateMap[date].sales_lbp = 0;
 
-  const fetchWithdrawals = async () => {
-    const { data, error } = await supabase.from("daniel").select("*");
-    if (error) {
-      toast.error("Error fetching withdrawals: " + error.message);
-    } else {
-      setWithdrawals(data);
-    }
+      dateMap[date].sales_usd += item.amount_usd;
+      dateMap[date].sales_lbp += item.amount_lbp;
+    });
+
+    // Process withdrawalsData
+    withdrawalsData.forEach((item) => {
+      const date = item.date;
+      if (!dateMap[date]) {
+        dateMap[date] = { date };
+      }
+      if (!dateMap[date].withdrawals_usd) dateMap[date].withdrawals_usd = 0;
+      if (!dateMap[date].withdrawals_lbp) dateMap[date].withdrawals_lbp = 0;
+
+      dateMap[date].withdrawals_usd += item.amount_usd;
+      dateMap[date].withdrawals_lbp += item.amount_lbp;
+    });
+
+    // Convert dateMap to array
+    const aggregatedData = Object.values(dateMap).sort(
+      (a, b) => new Date(a.date) - new Date(b.date)
+    );
+
+    setChartData(aggregatedData);
   };
 
   const addTransaction = async (values, type) => {
@@ -189,7 +268,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         date: values.date,
         type,
         user_id: adminUserId,
-        branch_id: values.branch_id || 0, // Add branch_id to the transaction
+        branch_id: values.branch_id || 0,
       };
 
       const { error } = await supabase
@@ -201,7 +280,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
       } else {
         setTransactions([transaction, ...transactions]);
         toast.success("Transaction added successfully!");
-        // Recalculate balance
+
         if (type === "Payment" && values.deduction_source === "daniel") {
           setBalance((prevBalance) => ({
             usd: prevBalance.usd - values.amount_usd,
@@ -219,6 +298,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
       setIsPaymentModalVisible(false);
       setIsConvertModalVisible(false);
       setConvertedAmount(null);
+      fetchAllData();
     } catch (error) {
       toast.error("Error adding transaction: " + error.message);
     }
@@ -240,7 +320,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           transactions.filter((transaction) => transaction.id !== id)
         );
         toast.success("Transaction deleted successfully!");
-        // Recalculate balance
+
         if (type === "Payment" && record.deduction_source === "daniel") {
           setBalance((prevBalance) => ({
             usd: prevBalance.usd + amount_usd,
@@ -253,6 +333,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           }));
         }
       }
+      fetchAllData();
     } catch (error) {
       toast.error("Error deleting transaction: " + error.message);
     }
@@ -262,27 +343,27 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
     const convertedTransaction =
       conversionType === "usd_to_lbp"
         ? {
-            date: values.date,
-            amount_usd: values.amount_usd,
-            amount_lbp: values.amount_usd * exchangeRate,
-            exchange_rate: exchangeRate,
-            type: "Conversion",
-            user_id: adminUserId,
-            original_currency: "USD",
-            converted_currency: "LBP",
-            branch_id: values.branch_id || 0, // Add branch_id to the conversion transaction
-          }
+          date: values.date,
+          amount_usd: values.amount_usd,
+          amount_lbp: values.amount_usd * exchangeRate,
+          exchange_rate: exchangeRate,
+          type: "Conversion",
+          user_id: adminUserId,
+          original_currency: "USD",
+          converted_currency: "LBP",
+          branch_id: values.branch_id || 0,
+        }
         : {
-            date: values.date,
-            amount_usd: values.amount_lbp / exchangeRate,
-            amount_lbp: values.amount_lbp,
-            type: "Conversion",
-            exchange_rate: exchangeRate,
-            user_id: adminUserId,
-            original_currency: "LBP",
-            converted_currency: "USD",
-            branch_id: values.branch_id || 0, // Add branch_id to the conversion transaction
-          };
+          date: values.date,
+          amount_usd: values.amount_lbp / exchangeRate,
+          amount_lbp: values.amount_lbp,
+          type: "Conversion",
+          exchange_rate: exchangeRate,
+          user_id: adminUserId,
+          original_currency: "LBP",
+          converted_currency: "USD",
+          branch_id: values.branch_id || 0,
+        };
 
     try {
       const { error } = await supabase
@@ -297,7 +378,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         setConvertedAmount(null);
         setIsConvertModalVisible(false);
         convertForm.resetFields();
-        fetchTransactions();
+        fetchAllData();
       }
     } catch (error) {
       toast.error("Error adding conversion: " + error.message);
@@ -398,10 +479,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
       key: "action",
       align: "center",
       render: (text, record) => (
-        <Button
-          type="link"
-          onClick={() => handleDelete(record)}
-        >
+        <Button type="link" onClick={() => handleDelete(record)}>
           Delete
         </Button>
       ),
@@ -462,10 +540,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
       key: "action",
       align: "center",
       render: (text, record) => (
-        <Button
-          type="link"
-          onClick={() => handleDelete(record)}
-        >
+        <Button type="link" onClick={() => handleDelete({ ...record, type: "Payment" })}>
           Delete
         </Button>
       ),
@@ -521,10 +596,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
       key: "action",
       align: "center",
       render: (text, record) => (
-        <Button
-          type="link"
-          onClick={() => handleDelete(record)}
-        >
+        <Button type="link" onClick={() => handleDelete({ ...record, type: "credit" })}>
           Delete
         </Button>
       ),
@@ -609,16 +681,16 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         );
         return dailyWithdrawals.length
           ? dailyWithdrawals.map((withdrawal) => (
-              <div key={withdrawal.id}>
-                <p>{`USD: ${formatNumber(withdrawal.amount_usd)}`}</p>
-                <p>{`LBP: ${formatNumber(withdrawal.amount_lbp)}`}</p>
-              </div>
-            ))
+            <div key={withdrawal.id}>
+              <p>{`USD: ${formatNumber(withdrawal.amount_usd)}`}</p>
+              <p>{`LBP: ${formatNumber(withdrawal.amount_lbp)}`}</p>
+            </div>
+          ))
           : "None";
       },
     },
     {
-      title: "User ID",
+      title: "User",
       dataIndex: "user_id",
       key: "user_id",
       render: (userId) => {
@@ -675,10 +747,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
       key: "action",
       align: "center",
       render: (text, record) => (
-        <Button
-          type="link"
-          onClick={() => handleDelete({ ...record, type: "sale" })}
-        >
+        <Button type="link" onClick={() => handleDelete({ ...record, type: "sale" })}>
           Delete
         </Button>
       ),
@@ -704,14 +773,8 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           </Col>
         )}
         {dailyPayments.map((payment) => (
-          <Col
-            key={payment.id}
-            span={8}
-          >
-            <Card
-              title={`Payment ID: ${payment.id}`}
-              bordered={false}
-            >
+          <Col key={payment.id} span={8}>
+            <Card title={`Payment ID: ${payment.id}`} bordered={false}>
               <p>{`USD: ${formatNumber(payment.amount_usd)}`}</p>
               <p>{`LBP: ${formatNumber(payment.amount_lbp)}`}</p>
               <p>{`Ref: ${payment.reference_number}`}</p>
@@ -726,14 +789,8 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           </Col>
         )}
         {dailyUnpaidCredits.map((credit) => (
-          <Col
-            key={credit.id}
-            span={8}
-          >
-            <Card
-              title={`Credit ID: ${credit.id}`}
-              bordered={false}
-            >
+          <Col key={credit.id} span={8}>
+            <Card title={`Credit ID: ${credit.id}`} bordered={false}>
               <p>{`USD: ${formatNumber(credit.amount_usd)}`}</p>
               <p>{`LBP: ${formatNumber(credit.amount_lbp)}`}</p>
               <p>{`Person: ${credit.person}`}</p>
@@ -747,14 +804,8 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           </Col>
         )}
         {dailyPaidCredits.map((credit) => (
-          <Col
-            key={credit.id}
-            span={8}
-          >
-            <Card
-              title={`Credit ID: ${credit.id}`}
-              bordered={false}
-            >
+          <Col key={credit.id} span={8}>
+            <Card title={`Credit ID: ${credit.id}`} bordered={false}>
               <p>{`USD: ${formatNumber(credit.amount_usd)}`}</p>
               <p>{`LBP: ${formatNumber(credit.amount_lbp)}`}</p>
               <p>{`Person: ${credit.person}`}</p>
@@ -796,13 +847,158 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         Convert LBP to USD
       </Button>
 
-      <Card
-        title="Current Balance"
-        style={{ marginTop: 20, marginBottom: 20 }}
-      >
+      <Card title="Current Balance" style={{ marginTop: 20, marginBottom: 20 }}>
         <p>USD: {formatNumber(balance.usd)}</p>
         <p>LBP: {formatNumber(balance.lbp)}</p>
       </Card>
+
+      <Card
+        title="Balance Over Time"
+        style={{ marginTop: 20, marginBottom: 20 }}
+      >
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis tickFormatter={formatNumber} />
+            <Tooltip formatter={formatNumber} />
+            <Legend />
+            <Line
+              type="monotone"
+              dataKey="opening_usd"
+              stroke="#8884d8"
+              name="Opening USD"
+            />
+            <Line
+              type="monotone"
+              dataKey="closing_usd"
+              stroke="#82ca9d"
+              name="Closing USD"
+            />
+            <Line
+              type="monotone"
+              dataKey="opening_lbp"
+              stroke="#ffc658"
+              name="Opening LBP"
+            />
+            <Line
+              type="monotone"
+              dataKey="closing_lbp"
+              stroke="#ff7300"
+              name="Closing LBP"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </Card>
+
+      <Card
+        title="Payments Over Time"
+        style={{ marginTop: 20, marginBottom: 20 }}
+      >
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis tickFormatter={formatNumber} />
+            <Tooltip formatter={formatNumber} />
+            <Legend />
+            <Line
+              type="monotone"
+              dataKey="payments_usd"
+              stroke="#8884d8"
+              name="Payments USD"
+            />
+            <Line
+              type="monotone"
+              dataKey="payments_lbp"
+              stroke="#82ca9d"
+              name="Payments LBP"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </Card>
+
+      <Card
+        title="Credits Over Time"
+        style={{ marginTop: 20, marginBottom: 20 }}
+      >
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis tickFormatter={formatNumber} />
+            <Tooltip formatter={formatNumber} />
+            <Legend />
+            <Line
+              type="monotone"
+              dataKey="credits_usd"
+              stroke="#ffc658"
+              name="Credits USD"
+            />
+            <Line
+              type="monotone"
+              dataKey="credits_lbp"
+              stroke="#ff7300"
+              name="Credits LBP"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </Card>
+
+      <Card
+        title="Sales Over Time"
+        style={{ marginTop: 20, marginBottom: 20 }}
+      >
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis tickFormatter={formatNumber} />
+            <Tooltip formatter={formatNumber} />
+            <Legend />
+            <Line
+              type="monotone"
+              dataKey="sales_usd"
+              stroke="#a4de6c"
+              name="Sales USD"
+            />
+            <Line
+              type="monotone"
+              dataKey="sales_lbp"
+              stroke="#d0ed57"
+              name="Sales LBP"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </Card>
+
+      <Card
+        title="Withdrawals Over Time"
+        style={{ marginTop: 20, marginBottom: 20 }}
+      >
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis tickFormatter={formatNumber} />
+            <Tooltip formatter={formatNumber} />
+            <Legend />
+            <Line
+              type="monotone"
+              dataKey="withdrawals_usd"
+              stroke="#8dd1e1"
+              name="Withdrawals USD"
+            />
+            <Line
+              type="monotone"
+              dataKey="withdrawals_lbp"
+              stroke="#83a6ed"
+              name="Withdrawals LBP"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </Card>
+
       <Table
         loading={isLoading}
         scroll={{ x: true }}
@@ -811,6 +1007,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         rowKey="id"
       />
 
+      {/* Payment Modal */}
       <Modal
         title="Add Payment"
         open={isPaymentModalVisible}
@@ -830,10 +1027,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           >
             <Select>
               {dailyBalances.map((balance) => (
-                <Option
-                  key={balance.id}
-                  value={balance.date}
-                >
+                <Option key={balance.id} value={balance.date}>
                   {balance.date}
                 </Option>
               ))}
@@ -884,26 +1078,21 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           >
             <Select placeholder="Select a branch">
               {branches.map((branch) => (
-                <Option
-                  key={branch.id}
-                  value={branch.id}
-                >
+                <Option key={branch.id} value={branch.id}>
                   {branch.name}
                 </Option>
               ))}
             </Select>
           </Form.Item>
           <Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-            >
+            <Button type="primary" htmlType="submit">
               Add Payment
             </Button>
           </Form.Item>
         </Form>
       </Modal>
 
+      {/* Conversion Modal */}
       <Modal
         title={
           conversionType === "usd_to_lbp"
@@ -914,17 +1103,12 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         onCancel={() => setIsConvertModalVisible(false)}
         footer={null}
       >
-        <Form
-          form={convertForm}
-          onFinish={handleConvert}
-        >
+        <Form form={convertForm} onFinish={handleConvert}>
           {conversionType === "usd_to_lbp" ? (
             <Form.Item
               name="amount_usd"
               label="Amount USD"
-              rules={[
-                { required: true, message: "Please input amount in USD!" },
-              ]}
+              rules={[{ required: true, message: "Please input amount in USD!" }]}
             >
               <InputNumber
                 formatter={(value) => formatNumber(value)}
@@ -937,9 +1121,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
             <Form.Item
               name="amount_lbp"
               label="Amount LBP"
-              rules={[
-                { required: true, message: "Please input amount in LBP!" },
-              ]}
+              rules={[{ required: true, message: "Please input amount in LBP!" }]}
             >
               <InputNumber
                 formatter={(value) => formatNumber(value)}
@@ -960,10 +1142,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
               style={{ width: "100%" }}
             />
           </Form.Item>
-          <Typography.Title
-            level={5}
-            style={{ marginBottom: 20 }}
-          >
+          <Typography.Title level={5} style={{ marginBottom: 20 }}>
             {conversionType === "usd_to_lbp"
               ? `Converted Amount: ${formatNumber(convertedAmount)} LBP`
               : `Converted Amount: ${formatNumber(convertedAmount)} USD`}
@@ -971,16 +1150,11 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           <Form.Item
             name="date"
             label="Select Conversion Date"
-            rules={[
-              { required: true, message: "Please select a conversion date!" },
-            ]}
+            rules={[{ required: true, message: "Please select a conversion date!" }]}
           >
             <Select>
               {dailyBalances.map((balance) => (
-                <Option
-                  key={balance.id}
-                  value={balance.date}
-                >
+                <Option key={balance.id} value={balance.date}>
                   {balance.date}
                 </Option>
               ))}
@@ -993,20 +1167,14 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           >
             <Select placeholder="Select a branch">
               {branches.map((branch) => (
-                <Option
-                  key={branch.id}
-                  value={branch.id}
-                >
+                <Option key={branch.id} value={branch.id}>
                   {branch.name}
                 </Option>
               ))}
             </Select>
           </Form.Item>
           <Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-            >
+            <Button type="primary" htmlType="submit">
               {conversionType === "usd_to_lbp"
                 ? "Convert and Add"
                 : "Convert and Add"}
@@ -1014,6 +1182,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
           </Form.Item>
         </Form>
       </Modal>
+
       <Divider />
 
       <Table
@@ -1032,7 +1201,7 @@ const TransactionTable = ({ adminUserId, exchangeRate }) => {
         dataSource={payments}
         columns={paymentsColumns}
         rowKey="id"
-        title={() => <Typography.Title level={5}>Payment</Typography.Title>}
+        title={() => <Typography.Title level={5}>Payments</Typography.Title>}
       />
       <Divider />
 

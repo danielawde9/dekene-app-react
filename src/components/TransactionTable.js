@@ -4,9 +4,7 @@ import React, { useState, useEffect } from "react";
 import {
   Table,
   Button,
-  Modal,
   Form,
-  InputNumber,
   Select,
   Card,
   Typography,
@@ -33,7 +31,6 @@ import {
 import "react-toastify/dist/ReactToastify.css";
 import moment from "moment";
 
-const { Option } = Select;
 const { RangePicker } = DatePicker;
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;

@@ -545,8 +545,7 @@ const MainScreen = ({ user }) => {
 
     // Create a transaction for the payment
     const transaction = {
-      key: Date.now(),
-      type: TRANSACTION_TYPES.CREDIT_PAYMENTS,
+      key: Date.now(),      type: TRANSACTION_TYPES.CREDIT_PAYMENTS,
       person: currentCredit.person,
       amount_usd: pay_amount_usd,
       amount_lbp: pay_amount_lbp,
@@ -1087,7 +1086,7 @@ export default MainScreen;
 
 const SelectBranchComponent = ({ branches, setSelectedBranch }) => {
   return (
-    <Card>
+    <Card style={{ marginTop: "20px" }}>
       <div className="site-layout-content">
         <h1>Select Branch</h1>
         <Form>

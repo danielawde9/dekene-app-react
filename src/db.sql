@@ -57,7 +57,7 @@ CREATE TABLE credits (
     user_id INT NOT NULL,
     FOREIGN KEY (branch_id) REFERENCES branches(id),
     FOREIGN KEY (date) REFERENCES dailybalances(date),
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
     paid_amount_usd NUMERIC DEFAULT 0,
     paid_amount_lbp NUMERIC DEFAULT 0
 );

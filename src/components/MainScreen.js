@@ -30,6 +30,8 @@ import { CLOSING_ALLOWED, DEFAULT_EXCHANGE_RATE, TRANSACTION_TYPES } from "../ut
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { formatNumber } from "../utils/formatNumber";
+import { useDebounce } from "use-debounce";
+import { SearchOutlined } from "@ant-design/icons";
 
 const { Content, Footer } = Layout;
 const { Option } = Select;
@@ -1245,6 +1247,89 @@ const TransactionCard = ({
   handleDelete,
   handleEdit,
 }) => {
+  const [searchText, setSearchText] = useState("");
+  const [debouncedSearchText] = useDebounce(searchText, 300); // 300ms debounce
+
+  // Filter unpaid credits based on search text
+  const filteredUnpaidCredits = useMemo(() => {
+    if (!debouncedSearchText) return unpaidCredits;
+    return unpaidCredits.filter((credit) =>
+      credit.person.toLowerCase().includes(debouncedSearchText.toLowerCase())
+    );
+  }, [unpaidCredits, debouncedSearchText]);
+
+  // Define columns with built-in filters and sorting
+  const unpaidCreditsColumns = useMemo(() => {
+
+
+    return [
+      {
+        title: "Person",
+        dataIndex: "person",
+        key: "person",
+        sorter: (a, b) => a.person.localeCompare(b.person),
+        onFilter: (value, record) => record.person === value,
+      },
+      {
+        title: "Total Amount USD",
+        dataIndex: "amount_usd",
+        key: "amount_usd",
+        render: formatNumber,
+        sorter: (a, b) => a.amount_usd - b.amount_usd,
+      },
+      {
+        title: "Total Amount LBP",
+        dataIndex: "amount_lbp",
+        key: "amount_lbp",
+        render: formatNumber,
+        sorter: (a, b) => a.amount_lbp - b.amount_lbp,
+      },
+      {
+        title: "Paid Amount USD",
+        dataIndex: "paid_amount_usd",
+        key: "paid_amount_usd",
+        render: formatNumber,
+        sorter: (a, b) => a.paid_amount_usd - b.paid_amount_usd,
+      },
+      {
+        title: "Paid Amount LBP",
+        dataIndex: "paid_amount_lbp",
+        key: "paid_amount_lbp",
+        render: formatNumber,
+        sorter: (a, b) => a.paid_amount_lbp - b.paid_amount_lbp,
+      },
+      {
+        title: "Remaining Amount USD",
+        key: "remaining_usd",
+        render: (text, record) =>
+          formatNumber(record.amount_usd - record.paid_amount_usd),
+        sorter: (a, b) =>
+          a.amount_usd -
+          a.paid_amount_usd -
+          (b.amount_usd - b.paid_amount_usd),
+      },
+      {
+        title: "Remaining Amount LBP",
+        key: "remaining_lbp",
+        render: (text, record) =>
+          formatNumber(record.amount_lbp - record.paid_amount_lbp),
+        sorter: (a, b) =>
+          a.amount_lbp -
+          a.paid_amount_lbp -
+          (b.amount_lbp - b.paid_amount_lbp),
+      },
+      {
+        title: "Action",
+        key: "action",
+        render: (_, record) => (
+          <Button type="primary" onClick={() => handlePayCredit(record)}>
+            Pay
+          </Button>
+        ),
+      },
+    ];
+  }, [handlePayCredit, unpaidCredits]);
+
   const renderFormFields = () => {
     switch (type) {
       case TRANSACTION_TYPES.DEBITS:
@@ -1272,7 +1357,7 @@ const TransactionCard = ({
               <Input placeholder="Add a description" />
             </Form.Item>
           </>
-        )
+        );
       case TRANSACTION_TYPES.CREDITS:
         return (
           <>
@@ -1312,7 +1397,7 @@ const TransactionCard = ({
             >
               <Input placeholder="Add a person" />
             </Form.Item>
-            <Form.Item name="status" label="Status" initialValue={false} hidden>
+            <Form.Item name="status" initialValue={false} hidden>
               <Input />
             </Form.Item>
             <Form.Item name="paid_amount_usd" initialValue={0} hidden>
@@ -1341,12 +1426,12 @@ const TransactionCard = ({
                 onChange={() => {
                   // Reset relevant fields when deduction_source changes
                   form.resetFields([
-                    'amount_usd',
-                    'amount_lbp',
-                    'amount_received_usd',
-                    'amount_received_lbp',
-                    'amount_to_be_paid_usd',
-                    'amount_to_be_paid_lbp',
+                    "amount_usd",
+                    "amount_lbp",
+                    "amount_received_usd",
+                    "amount_received_lbp",
+                    "amount_to_be_paid_usd",
+                    "amount_to_be_paid_lbp",
                   ]);
                 }}
               >
@@ -1356,10 +1441,14 @@ const TransactionCard = ({
             </Form.Item>
 
             {/* Conditionally render fields based on deduction_source */}
-            <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.deduction_source !== currentValues.deduction_source}>
+            <Form.Item
+              shouldUpdate={(prevValues, currentValues) =>
+                prevValues.deduction_source !== currentValues.deduction_source
+              }
+            >
               {() => {
-                const deductionSource = form.getFieldValue('deduction_source');
-                if (deductionSource === 'daniel') {
+                const deductionSource = form.getFieldValue("deduction_source");
+                if (deductionSource === "daniel") {
                   return (
                     <>
                       <Form.Item
@@ -1372,7 +1461,10 @@ const TransactionCard = ({
                           },
                         ]}
                       >
-                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                        <InputNumber
+                          formatter={formatNumber}
+                          style={{ width: "100%" }}
+                        />
                       </Form.Item>
                       <Form.Item
                         name="amount_received_lbp"
@@ -1384,7 +1476,10 @@ const TransactionCard = ({
                           },
                         ]}
                       >
-                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                        <InputNumber
+                          formatter={formatNumber}
+                          style={{ width: "100%" }}
+                        />
                       </Form.Item>
                       <Form.Item
                         name="amount_to_be_paid_usd"
@@ -1396,7 +1491,10 @@ const TransactionCard = ({
                           },
                         ]}
                       >
-                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                        <InputNumber
+                          formatter={formatNumber}
+                          style={{ width: "100%" }}
+                        />
                       </Form.Item>
                       <Form.Item
                         name="amount_to_be_paid_lbp"
@@ -1408,7 +1506,10 @@ const TransactionCard = ({
                           },
                         ]}
                       >
-                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                        <InputNumber
+                          formatter={formatNumber}
+                          style={{ width: "100%" }}
+                        />
                       </Form.Item>
                     </>
                   );
@@ -1425,7 +1526,10 @@ const TransactionCard = ({
                           },
                         ]}
                       >
-                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                        <InputNumber
+                          formatter={formatNumber}
+                          style={{ width: "100%" }}
+                        />
                       </Form.Item>
                       <Form.Item
                         name="amount_lbp"
@@ -1437,7 +1541,10 @@ const TransactionCard = ({
                           },
                         ]}
                       >
-                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                        <InputNumber
+                          formatter={formatNumber}
+                          style={{ width: "100%" }}
+                        />
                       </Form.Item>
                     </>
                   );
@@ -1472,7 +1579,6 @@ const TransactionCard = ({
             </Form.Item>
           </>
         );
-
       case TRANSACTION_TYPES.SALES:
       case TRANSACTION_TYPES.WITHDRAWALS:
         return (
@@ -1508,6 +1614,8 @@ const TransactionCard = ({
     }
   };
 
+
+  // Define columns for the main transactions table
   const columns = useMemo(() => {
     const baseColumns = [
       {
@@ -1571,6 +1679,7 @@ const TransactionCard = ({
           },
           actionColumn,
         ];
+
       case TRANSACTION_TYPES.PAYMENTS:
         return [
           {
@@ -1605,25 +1714,37 @@ const TransactionCard = ({
             title: "Amount Received USD",
             dataIndex: "amount_received_usd",
             key: "amount_received_usd",
-            render: (text, record) => record.deduction_source === 'daniel' ? formatNumber(record.amount_received_usd) : null,
+            render: (text, record) =>
+              record.deduction_source === "daniel"
+                ? formatNumber(record.amount_received_usd)
+                : null,
           },
           {
             title: "Amount Received LBP",
             dataIndex: "amount_received_lbp",
             key: "amount_received_lbp",
-            render: (text, record) => record.deduction_source === 'daniel' ? formatNumber(record.amount_received_lbp) : null,
+            render: (text, record) =>
+              record.deduction_source === "daniel"
+                ? formatNumber(record.amount_received_lbp)
+                : null,
           },
           {
             title: "Amount to be Paid USD",
             dataIndex: "amount_to_be_paid_usd",
             key: "amount_to_be_paid_usd",
-            render: (text, record) => record.deduction_source === 'daniel' ? formatNumber(record.amount_to_be_paid_usd) : null,
+            render: (text, record) =>
+              record.deduction_source === "daniel"
+                ? formatNumber(record.amount_to_be_paid_usd)
+                : null,
           },
           {
             title: "Amount to be Paid LBP",
             dataIndex: "amount_to_be_paid_lbp",
             key: "amount_to_be_paid_lbp",
-            render: (text, record) => record.deduction_source === 'daniel' ? formatNumber(record.amount_to_be_paid_lbp) : null,
+            render: (text, record) =>
+              record.deduction_source === "daniel"
+                ? formatNumber(record.amount_to_be_paid_lbp)
+                : null,
           },
           actionColumn,
         ];
@@ -1638,6 +1759,7 @@ const TransactionCard = ({
           },
           actionColumn,
         ];
+
       default:
         return [...baseColumns, actionColumn];
     }
@@ -1657,13 +1779,23 @@ const TransactionCard = ({
         }}
         onFinish={(values) => {
           const key = Date.now();
-          if (type === TRANSACTION_TYPES.PAYMENTS && values.deduction_source === 'daniel') {
+          if (
+            type === TRANSACTION_TYPES.PAYMENTS &&
+            values.deduction_source === "daniel"
+          ) {
             const amountReceivedUSD = values.amount_received_usd || 0;
             const amountReceivedLBP = values.amount_received_lbp || 0;
             const amountToBePaidUSD = values.amount_to_be_paid_usd || 0;
             const amountToBePaidLBP = values.amount_to_be_paid_lbp || 0;
             const leftoverUSD = amountReceivedUSD - amountToBePaidUSD;
             const leftoverLBP = amountReceivedLBP - amountToBePaidLBP;
+
+            if (leftoverUSD < 0 || leftoverLBP < 0) {
+              message.error(
+                "Amount to be paid cannot exceed the amount received."
+              );
+              return;
+            }
 
             // Create the payment transaction with all the necessary fields
             const paymentTransaction = {
@@ -1691,6 +1823,9 @@ const TransactionCard = ({
                 isAutoGenerated: true,
               };
               addTransaction(saleTransaction);
+              message.info(
+                "An auto-generated sale transaction has been created for the leftover amount."
+              );
             }
           } else {
             // For other payments
@@ -1699,7 +1834,6 @@ const TransactionCard = ({
           form.resetFields();
         }}
       >
-
         {renderFormFields()}
         <Form.Item name="isAutoGenerated" initialValue={false} hidden>
           <Input />
@@ -1710,79 +1844,35 @@ const TransactionCard = ({
           </Button>
         </Form.Item>
       </Form>
+
       {type === TRANSACTION_TYPES.CREDITS && (
         <Collapse
           defaultActiveKey={[]}
           style={{ marginTop: 20, marginBottom: 20, padding: 0 }}
         >
-          <Collapse.Panel
-            header="Unpaid Credits"
-            key="1"
-            style={{ padding: 0 }}
-          >
+          <Collapse.Panel header="Unpaid Credits" key="1" style={{ padding: 0 }}>
+            {/* Search Input */}
+            <Input
+              placeholder="Search by Person"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ marginBottom: 16, width: 200 }}
+              prefix={<SearchOutlined />}
+            />
+
+            {/* Unpaid Credits Table */}
             <Table
-              dataSource={unpaidCredits}
-              columns={[
-                {
-                  title: "Person",
-                  dataIndex: "person",
-                  key: "person",
-                },
-                {
-                  title: "Total Amount USD",
-                  dataIndex: "amount_usd",
-                  key: "amount_usd",
-                  render: formatNumber,
-                },
-                {
-                  title: "Total Amount LBP",
-                  dataIndex: "amount_lbp",
-                  key: "amount_lbp",
-                  render: formatNumber,
-                },
-                {
-                  title: "Paid Amount USD",
-                  dataIndex: "paid_amount_usd",
-                  key: "paid_amount_usd",
-                  render: formatNumber,
-                },
-                {
-                  title: "Paid Amount LBP",
-                  dataIndex: "paid_amount_lbp",
-                  key: "paid_amount_lbp",
-                  render: formatNumber,
-                },
-                {
-                  title: "Remaining Amount USD",
-                  key: "remaining_usd",
-                  render: (text, record) =>
-                    formatNumber(record.amount_usd - record.paid_amount_usd),
-                },
-                {
-                  title: "Remaining Amount LBP",
-                  key: "remaining_lbp",
-                  render: (text, record) =>
-                    formatNumber(record.amount_lbp - record.paid_amount_lbp),
-                },
-                {
-                  title: "Action",
-                  key: "action",
-                  render: (_, record) => (
-                    <Button
-                      type="primary"
-                      onClick={() => handlePayCredit(record)}
-                    >
-                      Pay
-                    </Button>
-                  ),
-                },
-              ]}
+              dataSource={filteredUnpaidCredits}
+              columns={unpaidCreditsColumns}
               rowKey="id"
               pagination={{ pageSize: 5 }}
+              locale={{ emptyText: "No unpaid credits found." }}
             />
           </Collapse.Panel>
         </Collapse>
       )}
+
+      {/* Transactions Table */}
       <Table
         dataSource={data}
         columns={columns}

@@ -147,3 +147,8 @@ CREATE TABLE debits (
     FOREIGN KEY (date) REFERENCES dailybalances(date),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+ALTER TABLE payments ADD COLUMN amount_received_usd NUMERIC;
+ALTER TABLE payments ADD COLUMN amount_received_lbp NUMERIC;
+ALTER TABLE payments ADD COLUMN amount_to_be_paid_usd NUMERIC;
+ALTER TABLE payments ADD COLUMN amount_to_be_paid_lbp NUMERIC;

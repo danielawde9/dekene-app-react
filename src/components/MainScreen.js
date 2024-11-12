@@ -260,17 +260,13 @@ const MainScreen = ({ user }) => {
     const totalPaymentsUSD =
       payments?.reduce(
         (acc, payment) =>
-          payment.deduction_source !== "daniel"
-            ? acc + payment.amount_usd
-            : acc,
+          payment.deduction_source !== "daniel" ? acc + payment.amount_usd : acc,
         0
       ) || 0;
     const totalPaymentsLBP =
       payments?.reduce(
         (acc, payment) =>
-          payment.deduction_source !== "daniel"
-            ? acc + payment.amount_lbp
-            : acc,
+          payment.deduction_source !== "daniel" ? acc + payment.amount_lbp : acc,
         0
       ) || 0;
     const totalSalesUSD =
@@ -295,7 +291,7 @@ const MainScreen = ({ user }) => {
       actualOpeningBalances.usd +
       totalSalesUSD +
       totalCreditPaymentsUSD +
-      totalDebitsUSD - // Include debits
+      totalDebitsUSD -
       totalNewCreditsUSD -
       totalPaymentsUSD -
       totalWithdrawalsUSD;
@@ -304,7 +300,7 @@ const MainScreen = ({ user }) => {
       actualOpeningBalances.lbp +
       totalSalesLBP +
       totalCreditPaymentsLBP +
-      totalDebitsLBP - // Include debits
+      totalDebitsLBP -
       totalNewCreditsLBP -
       totalPaymentsLBP -
       totalWithdrawalsLBP;
@@ -487,25 +483,60 @@ const MainScreen = ({ user }) => {
         }
       }
 
-      // Handle other transactions (payments, sales, withdrawals)
-      const transactionTypes = ["payments", "sales", "withdrawals", "debits"];
+      // Handle other transactions (payments, sales, withdrawals, debits)
+      const { payments, sales, withdrawals, debits } = transactions;
 
-      for (const typeKey of transactionTypes) {
-        const tableName = typeKey === "withdrawals" ? "daniel" : typeKey;
-
-        const dataToInsert = transactions[typeKey]?.map(({ type, key, ...item }) => ({
+      // Process payments
+      if (payments && payments.length > 0) {
+        const paymentsData = payments.map(({ type, key, ...item }) => ({
           ...item,
           date,
           user_id: selectedUser,
           branch_id: selectedBranch,
         }));
 
-        if (dataToInsert && dataToInsert.length > 0) {
-          const { error } = await supabase.from(tableName).insert(dataToInsert);
-          if (error) throw error;
-        }
+        const { error } = await supabase.from("payments").insert(paymentsData);
+        if (error) throw error;
       }
 
+      // Process sales
+      if (sales && sales.length > 0) {
+        const salesData = sales.map(({ type, key, ...item }) => ({
+          ...item,
+          date,
+          user_id: selectedUser,
+          branch_id: selectedBranch,
+        }));
+
+        const { error } = await supabase.from("sales").insert(salesData);
+        if (error) throw error;
+      }
+
+      // Process withdrawals
+      if (withdrawals && withdrawals.length > 0) {
+        const withdrawalsData = withdrawals.map(({ type, key, ...item }) => ({
+          ...item,
+          date,
+          user_id: selectedUser,
+          branch_id: selectedBranch,
+        }));
+
+        const { error } = await supabase.from("daniel").insert(withdrawalsData);
+        if (error) throw error;
+      }
+
+      // Process debits
+      if (debits && debits.length > 0) {
+        const debitsData = debits.map(({ type, key, ...item }) => ({
+          ...item,
+          date,
+          user_id: selectedUser,
+          branch_id: selectedBranch,
+        }));
+
+        const { error } = await supabase.from("debits").insert(debitsData);
+        if (error) throw error;
+      }
 
       toast.success("Daily balance and transactions submitted successfully!");
 
@@ -516,6 +547,7 @@ const MainScreen = ({ user }) => {
         payments: [],
         sales: [],
         withdrawals: [],
+        debits: [],
       });
       setOpeningBalances({ usd: closing_usd, lbp: closing_lbp });
       setActualOpeningBalances({ usd: closing_usd, lbp: closing_lbp });
@@ -1295,29 +1327,125 @@ const TransactionCard = ({
         return (
           <>
             <Form.Item
-              name="amount_usd"
-              label="Amount USD"
+              name="deduction_source"
+              label="Deduction Source"
               rules={[
                 {
                   required: true,
-                  message: "Please input amount in USD!",
+                  message: "Please select the deduction source!",
                 },
               ]}
             >
-              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+              <Select
+                placeholder="Select deduction source"
+                onChange={() => {
+                  // Reset relevant fields when deduction_source changes
+                  form.resetFields([
+                    'amount_usd',
+                    'amount_lbp',
+                    'amount_received_usd',
+                    'amount_received_lbp',
+                    'amount_to_be_paid_usd',
+                    'amount_to_be_paid_lbp',
+                  ]);
+                }}
+              >
+                <Option value="current">Current Closing</Option>
+                <Option value="daniel">Daniel</Option>
+              </Select>
             </Form.Item>
-            <Form.Item
-              name="amount_lbp"
-              label="Amount LBP"
-              rules={[
-                {
-                  required: true,
-                  message: "Please input amount in LBP!",
-                },
-              ]}
-            >
-              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+
+            {/* Conditionally render fields based on deduction_source */}
+            <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.deduction_source !== currentValues.deduction_source}>
+              {() => {
+                const deductionSource = form.getFieldValue('deduction_source');
+                if (deductionSource === 'daniel') {
+                  return (
+                    <>
+                      <Form.Item
+                        name="amount_received_usd"
+                        label="Amount Received USD"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input amount received in USD!",
+                          },
+                        ]}
+                      >
+                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                      </Form.Item>
+                      <Form.Item
+                        name="amount_received_lbp"
+                        label="Amount Received LBP"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input amount received in LBP!",
+                          },
+                        ]}
+                      >
+                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                      </Form.Item>
+                      <Form.Item
+                        name="amount_to_be_paid_usd"
+                        label="Amount to be Paid USD"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input amount to be paid in USD!",
+                          },
+                        ]}
+                      >
+                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                      </Form.Item>
+                      <Form.Item
+                        name="amount_to_be_paid_lbp"
+                        label="Amount to be Paid LBP"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input amount to be paid in LBP!",
+                          },
+                        ]}
+                      >
+                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                      </Form.Item>
+                    </>
+                  );
+                } else {
+                  return (
+                    <>
+                      <Form.Item
+                        name="amount_usd"
+                        label="Amount USD"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input amount in USD!",
+                          },
+                        ]}
+                      >
+                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                      </Form.Item>
+                      <Form.Item
+                        name="amount_lbp"
+                        label="Amount LBP"
+                        rules={[
+                          {
+                            required: true,
+                            message: "Please input amount in LBP!",
+                          },
+                        ]}
+                      >
+                        <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+                      </Form.Item>
+                    </>
+                  );
+                }
+              }}
             </Form.Item>
+
+            {/* Common fields */}
             <Form.Item
               name="reference_number"
               label="Reference Number"
@@ -1342,23 +1470,9 @@ const TransactionCard = ({
             >
               <Input placeholder="Add a Cause" />
             </Form.Item>
-            <Form.Item
-              name="deduction_source"
-              label="Deduction Source"
-              rules={[
-                {
-                  required: true,
-                  message: "Please select the deduction source!",
-                },
-              ]}
-            >
-              <Select placeholder="Select deduction source">
-                <Option value="current">Current Closing</Option>
-                <Option value="daniel">Daniel</Option>
-              </Select>
-            </Form.Item>
           </>
         );
+
       case TRANSACTION_TYPES.SALES:
       case TRANSACTION_TYPES.WITHDRAWALS:
         return (
@@ -1459,7 +1573,18 @@ const TransactionCard = ({
         ];
       case TRANSACTION_TYPES.PAYMENTS:
         return [
-          ...baseColumns,
+          {
+            title: "Amount USD",
+            dataIndex: "amount_usd",
+            key: "amount_usd",
+            render: formatNumber,
+          },
+          {
+            title: "Amount LBP",
+            dataIndex: "amount_lbp",
+            key: "amount_lbp",
+            render: formatNumber,
+          },
           {
             title: "Reference Number",
             dataIndex: "reference_number",
@@ -1475,8 +1600,34 @@ const TransactionCard = ({
             dataIndex: "deduction_source",
             key: "deduction_source",
           },
+          // Optional: Show Amount Received and Amount to be Paid for 'daniel' payments
+          {
+            title: "Amount Received USD",
+            dataIndex: "amount_received_usd",
+            key: "amount_received_usd",
+            render: (text, record) => record.deduction_source === 'daniel' ? formatNumber(record.amount_received_usd) : null,
+          },
+          {
+            title: "Amount Received LBP",
+            dataIndex: "amount_received_lbp",
+            key: "amount_received_lbp",
+            render: (text, record) => record.deduction_source === 'daniel' ? formatNumber(record.amount_received_lbp) : null,
+          },
+          {
+            title: "Amount to be Paid USD",
+            dataIndex: "amount_to_be_paid_usd",
+            key: "amount_to_be_paid_usd",
+            render: (text, record) => record.deduction_source === 'daniel' ? formatNumber(record.amount_to_be_paid_usd) : null,
+          },
+          {
+            title: "Amount to be Paid LBP",
+            dataIndex: "amount_to_be_paid_lbp",
+            key: "amount_to_be_paid_lbp",
+            render: (text, record) => record.deduction_source === 'daniel' ? formatNumber(record.amount_to_be_paid_lbp) : null,
+          },
           actionColumn,
         ];
+
       case TRANSACTION_TYPES.CREDIT_PAYMENTS:
         return [
           ...baseColumns,
@@ -1505,10 +1656,50 @@ const TransactionCard = ({
           isAutoGenerated: false, // Default to false
         }}
         onFinish={(values) => {
-          addTransaction({ ...values, key: Date.now(), type });
+          const key = Date.now();
+          if (type === TRANSACTION_TYPES.PAYMENTS && values.deduction_source === 'daniel') {
+            const amountReceivedUSD = values.amount_received_usd || 0;
+            const amountReceivedLBP = values.amount_received_lbp || 0;
+            const amountToBePaidUSD = values.amount_to_be_paid_usd || 0;
+            const amountToBePaidLBP = values.amount_to_be_paid_lbp || 0;
+            const leftoverUSD = amountReceivedUSD - amountToBePaidUSD;
+            const leftoverLBP = amountReceivedLBP - amountToBePaidLBP;
+
+            // Create the payment transaction with all the necessary fields
+            const paymentTransaction = {
+              key,
+              type,
+              amount_usd: amountToBePaidUSD,
+              amount_lbp: amountToBePaidLBP,
+              reference_number: values.reference_number,
+              cause: values.cause,
+              deduction_source: values.deduction_source,
+              amount_received_usd: amountReceivedUSD,
+              amount_received_lbp: amountReceivedLBP,
+              amount_to_be_paid_usd: amountToBePaidUSD,
+              amount_to_be_paid_lbp: amountToBePaidLBP,
+            };
+            addTransaction(paymentTransaction);
+
+            // Create the auto-generated sale transaction if there's a leftover
+            if (leftoverUSD > 0 || leftoverLBP > 0) {
+              const saleTransaction = {
+                key: `${key}-sale`,
+                type: TRANSACTION_TYPES.SALES,
+                amount_usd: leftoverUSD > 0 ? leftoverUSD : 0,
+                amount_lbp: leftoverLBP > 0 ? leftoverLBP : 0,
+                isAutoGenerated: true,
+              };
+              addTransaction(saleTransaction);
+            }
+          } else {
+            // For other payments
+            addTransaction({ ...values, key, type });
+          }
           form.resetFields();
         }}
       >
+
         {renderFormFields()}
         <Form.Item name="isAutoGenerated" initialValue={false} hidden>
           <Input />

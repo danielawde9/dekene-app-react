@@ -112,7 +112,6 @@ const useStore = create(
     }
   )
 );
-
 const MainScreen = ({ user }) => {
   const {
     transactions,

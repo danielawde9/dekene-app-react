@@ -134,3 +134,16 @@ CREATE TABLE opening_differences (
   difference_lbp NUMERIC NOT NULL
 );
 
+-- Table: debits
+CREATE TABLE debits (
+    id SERIAL PRIMARY KEY,
+    amount_lbp NUMERIC NOT NULL,
+    amount_usd NUMERIC NOT NULL,
+    branch_id INT NOT NULL,
+    date DATE NOT NULL,
+    description VARCHAR,
+    user_id INT NOT NULL,
+    FOREIGN KEY (branch_id) REFERENCES branches(id),
+    FOREIGN KEY (date) REFERENCES dailybalances(date),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);

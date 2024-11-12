@@ -48,6 +48,7 @@ const useStore = create(
         payments: [],
         sales: [],
         withdrawals: [],
+        debits: [],
       },
       selectedBranch: null,
       isConfirmed: false,
@@ -132,6 +133,7 @@ const MainScreen = ({ user }) => {
     saleForm: Form.useForm()[0],
     withdrawalForm: Form.useForm()[0],
     editForm: Form.useForm()[0],
+    debitForm: Form.useForm()[0],
   });
 
   // State for Pay Credit Modal
@@ -233,8 +235,8 @@ const MainScreen = ({ user }) => {
   }, [selectedBranch, setUnpaidCredits]);
 
   const totals = useMemo(() => {
-    const { credits, credit_payments, payments, sales, withdrawals } =
-      transactions;
+    const { credits, credit_payments, payments, sales, withdrawals, debits } = transactions;
+
 
     // Calculate totals for new credits
     const totalNewCreditsUSD =
@@ -286,17 +288,23 @@ const MainScreen = ({ user }) => {
         0
       ) || 0;
 
+    const totalDebitsUSD = debits?.reduce((acc, debit) => acc + debit.amount_usd, 0) || 0;
+    const totalDebitsLBP = debits?.reduce((acc, debit) => acc + debit.amount_lbp, 0) || 0;
+
     const netUSD =
       actualOpeningBalances.usd +
       totalSalesUSD +
-      totalCreditPaymentsUSD -
+      totalCreditPaymentsUSD +
+      totalDebitsUSD - // Include debits
       totalNewCreditsUSD -
       totalPaymentsUSD -
       totalWithdrawalsUSD;
+
     const netLBP =
       actualOpeningBalances.lbp +
       totalSalesLBP +
-      totalCreditPaymentsLBP -
+      totalCreditPaymentsLBP +
+      totalDebitsLBP - // Include debits
       totalNewCreditsLBP -
       totalPaymentsLBP -
       totalWithdrawalsLBP;
@@ -480,25 +488,24 @@ const MainScreen = ({ user }) => {
       }
 
       // Handle other transactions (payments, sales, withdrawals)
-      const transactionTypes = ["payments", "sales", "withdrawals"];
+      const transactionTypes = ["payments", "sales", "withdrawals", "debits"];
 
       for (const typeKey of transactionTypes) {
         const tableName = typeKey === "withdrawals" ? "daniel" : typeKey;
 
-        const dataToInsert = transactions[typeKey]?.map(
-          ({ type, key, ...item }) => ({
-            ...item,
-            date,
-            user_id: selectedUser,
-            branch_id: selectedBranch,
-          })
-        );
+        const dataToInsert = transactions[typeKey]?.map(({ type, key, ...item }) => ({
+          ...item,
+          date,
+          user_id: selectedUser,
+          branch_id: selectedBranch,
+        }));
 
         if (dataToInsert && dataToInsert.length > 0) {
           const { error } = await supabase.from(tableName).insert(dataToInsert);
           if (error) throw error;
         }
       }
+
 
       toast.success("Daily balance and transactions submitted successfully!");
 
@@ -545,7 +552,7 @@ const MainScreen = ({ user }) => {
 
     // Create a transaction for the payment
     const transaction = {
-      key: Date.now(),      type: TRANSACTION_TYPES.CREDIT_PAYMENTS,
+      key: Date.now(), type: TRANSACTION_TYPES.CREDIT_PAYMENTS,
       person: currentCredit.person,
       amount_usd: pay_amount_usd,
       amount_lbp: pay_amount_lbp,
@@ -1129,7 +1136,7 @@ const TransactionForms = ({
   return (
     <>
       <Row gutter={16}>
-        <Col xs={24} sm={14}>
+        <Col xs={24} sm={24}>
           <TransactionCard
             title="Credits"
             type={TRANSACTION_TYPES.CREDITS}
@@ -1142,7 +1149,10 @@ const TransactionForms = ({
             handleEdit={handleEdit}
           />
         </Col>
-        <Col xs={24} sm={10}>
+
+      </Row>
+      <Row gutter={16}>
+        <Col xs={24} sm={12}>
           <TransactionCard
             title="Payments"
             type={TRANSACTION_TYPES.PAYMENTS}
@@ -1153,8 +1163,17 @@ const TransactionForms = ({
             handleEdit={handleEdit}
           />
         </Col>
-      </Row>
-      <Row gutter={16}>
+        <Col xs={24} sm={12}>
+          <TransactionCard
+            title="Debits"
+            type={TRANSACTION_TYPES.DEBITS}
+            form={forms.debitForm}
+            addTransaction={addTransaction}
+            data={transactions.debits}
+            handleDelete={handleDelete}
+            handleEdit={handleEdit}
+          />
+        </Col>
         <Col xs={24} sm={12}>
           <TransactionCard
             title="Sales"
@@ -1177,6 +1196,7 @@ const TransactionForms = ({
             handleEdit={handleEdit}
           />
         </Col>
+
       </Row>
     </>
   );
@@ -1195,6 +1215,32 @@ const TransactionCard = ({
 }) => {
   const renderFormFields = () => {
     switch (type) {
+      case TRANSACTION_TYPES.DEBITS:
+        return (
+          <>
+            <Form.Item
+              name="amount_usd"
+              label="Amount USD"
+              rules={[{ required: true, message: "Please input amount in USD!" }]}
+            >
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name="amount_lbp"
+              label="Amount LBP"
+              rules={[{ required: true, message: "Please input amount in LBP!" }]}
+            >
+              <InputNumber formatter={formatNumber} style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item
+              name="description"
+              label="Description"
+              rules={[{ required: true, message: "Please input a description!" }]}
+            >
+              <Input placeholder="Add a description" />
+            </Form.Item>
+          </>
+        )
       case TRANSACTION_TYPES.CREDITS:
         return (
           <>
@@ -1390,6 +1436,17 @@ const TransactionCard = ({
     };
 
     switch (type) {
+      case TRANSACTION_TYPES.DEBITS:
+        return [
+          ...baseColumns,
+          {
+            title: "Description",
+            dataIndex: "description",
+            key: "description",
+          },
+          actionColumn,
+        ];
+
       case TRANSACTION_TYPES.CREDITS:
         return [
           ...baseColumns,
@@ -1530,7 +1587,7 @@ const TransactionCard = ({
                 },
               ]}
               rowKey="id"
-              pagination={false}
+              pagination={{ pageSize: 5 }}
             />
           </Collapse.Panel>
         </Collapse>

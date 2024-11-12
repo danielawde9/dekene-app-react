@@ -8,4 +8,5 @@ export const TRANSACTION_TYPES = {
     PAYMENTS: "payments",
     SALES: "sales",
     WITHDRAWALS: "withdrawals",
+    DEBITS: 'debits',  
   };
